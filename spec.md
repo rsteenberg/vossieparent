@@ -837,6 +837,18 @@ compliance/
 
 # Changelog
 
+- [2025-10-23] Deployment script (server automation)
+  - Files changed
+    - `deploy.sh`
+  - Behavior impact
+    - No spec impact. Deploy automation only (pull from Git, install deps, migrate, collectstatic, restart service, health-check).
+  - Data model
+    - No changes.
+  - Security/Privacy
+    - Uses `systemctl` to manage the Gunicorn service; no change to app security.
+  - Rollout/Flags
+    - Copy to server and run with sudo. Configure variables at top (paths, service name, URLs). Ensure `STATIC_ROOT` is set in `config/settings.py` for collectstatic.
+
 - [2025-10-23] Auth UI templates and login styling
   - Files changed
     - `templates/base.html`, `static/css/app.css`
