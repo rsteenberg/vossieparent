@@ -13,7 +13,7 @@ def get_app_token():
     app = msal.ConfidentialClientApplication(
         client_id=settings.DYNAMICS_CLIENT_ID,
         client_credential=settings.DYNAMICS_CLIENT_SECRET,
-        authority=f"https://login.microsoftonline.com/{settings.DYNAMICS_TENANT_ID}",
+        authority=f"https://login.microsoftonline.com//cf87d705-23dc-4ae8-a866-47fb4924fa7a",
     )
     result = app.acquire_token_for_client(scopes=[settings.DYNAMICS_SCOPE])
     token = result["access_token"]
