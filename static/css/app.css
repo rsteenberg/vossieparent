@@ -16,6 +16,7 @@
 .side-link.active{background:var(--pill);font-weight:600;border-left:3px solid var(--brand);padding-left:calc(.8rem - 3px)}
 .content{min-height:60vh}
 .card{background:var(--card);border:1px solid var(--ring);border-radius:12px;padding:1rem}
+.card.elevated{box-shadow:0 6px 18px rgba(17,24,39,.08)}
 .hstack{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
 .hstack.between{justify-content:space-between}
 .vstack{display:flex;gap:.75rem;flex-direction:column}
@@ -26,6 +27,11 @@
 .form-stack{display:flex;flex-direction:column;gap:.5rem;max-width:600px}
 .input{padding:.5rem;border:1px solid var(--ring);border-radius:.5rem}
 .textarea{padding:.5rem;border:1px solid var(--ring);border-radius:.5rem;min-height:120px}
+.auth-wrap{display:grid;place-items:center;min-height:65vh}
+.auth-card{max-width:420px;width:100%}
+.alert{padding:.6rem .8rem;border:1px solid var(--ring);border-radius:.5rem}
+.alert.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.alert.info{background:#eef6ff;border-color:#bfdbfe;color:#1e40af}
 .tabs{display:flex;gap:.5rem;flex-wrap:wrap}
 .tab{background:var(--chip);border:1px solid var(--chip-border);color:#6b3d1e;padding:.5rem .75rem;border-radius:.5rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem}
 .tab:hover{filter:brightness(.98)}

@@ -837,6 +837,26 @@ compliance/
 
 # Changelog
 
+- [2025-10-23] Auth UI templates and login styling
+  - Files changed
+    - `templates/base.html`, `static/css/app.css`
+    - `accounts/views.py`
+    - `templates/account/login.html`, `templates/account/signup.html`, `templates/account/logout.html`
+    - `templates/account/password_reset.html`, `templates/account/password_reset_done.html`
+    - `templates/account/password_reset_from_key.html`, `templates/account/password_reset_from_key_done.html`
+    - `templates/account/verification_sent.html`, `templates/account/email_confirm.html`
+  - Behavior impact
+    - Unauthenticated pages render without the sidebar; header shows Login/Register (or Logout when authenticated).
+    - Login screen centered in an elevated card with improved form styling and inline error/message display.
+    - Allauth pages (signup, logout, password reset flow, email verification) now use the site layout and styling.
+  - Data model
+    - No changes.
+  - Security/Privacy
+    - No changes to auth logic; UI only. Email verification remains mandatory.
+  - Rollout/Flags
+    - Run `collectstatic` after deploy to publish updated CSS and templates.
+    - Ensure `SITE_URL` and `ALLOWED_HOSTS` are set for production.
+
 - [2025-10-23] Notices, UI scaffolding, and email digest
   - Files changed
     - `content/models.py`, `content/admin.py`, `content/services.py`, `content/views.py`, `content/urls.py`
