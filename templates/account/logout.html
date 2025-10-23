@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block page_title %}Sign out · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Sign out</div>
+  <div class="card">
+    <form method="post" action="{% url 'account_logout' %}">
+      {% csrf_token %}
+      {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+      {% endif %}
+      <p class="muted">Are you sure you want to sign out?</p>
+      <button type="submit" class="tab">Sign out</button>
+      <a href="/" class="tab">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

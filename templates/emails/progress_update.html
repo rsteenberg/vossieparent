@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <body>
+    <p>Hi {{ parent.first_name|default:"there" }},</p>
+    <p>Here’s this week’s update for {% if students|length == 1 %}your child{% else %}your children{% endif %}:</p>
+    <ul>
+      {% for first,last in students %}
+        <li><strong>{{ first }} {{ last }}</strong>: progress summary goes here…</li>
+      {% endfor %}
+    </ul>
+    <p>If you no longer wish to receive these, you can
+      <a href="{{ unsubscribe_url }}">unsubscribe here</a>.</p>
+  </body>
+</html>

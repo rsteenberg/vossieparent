@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block page_title %}Preferences · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Email preferences</div>
+  <div class="card">
+    <form method="post">
+      {% csrf_token %}
+      <label style="display:flex;align-items:center;gap:.5rem;">
+        <input type="checkbox" name="marketing_opt_in" {% if opt_in_checked %}checked{% endif %}>
+        Receive progress updates
+      </label>
+      <div style="margin-top:.75rem;">
+        <button type="submit" class="tab">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

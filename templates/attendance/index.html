@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_title %}Attendance · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Attendance</div>
+  {% if not active_student_id %}
+    <div class="card"><div class="muted">Select a student to view attendance.</div></div>
+  {% else %}
+    <div class="card"><div class="muted">Showing attendance for student ID {{ active_student_id }}. (Coming soon)</div></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+Your notices
+
+{% if notices_counts.total %}
+{% if notices.personal %}
+Personal messages to you ({{ notices_counts.personal }})
+{% for a in notices.personal %}
+- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
+{% endfor %}
+{% endif %}
+
+{% if notices.student %}
+Notices about your student(s) ({{ notices_counts.student }})
+{% for a in notices.student %}
+- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
+{% endfor %}
+{% endif %}
+
+{% if notices.module %}
+Course/module notices ({{ notices_counts.module }})
+{% for a in notices.module %}
+- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
+{% endfor %}
+{% endif %}
+
+{% if notices.general %}
+General notices for parents ({{ notices_counts.general }})
+{% for a in notices.general %}
+- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
+{% endfor %}
+{% endif %}
+{% else %}
+No new notices.
+{% endif %}
+
+To unsubscribe, visit: {{ unsubscribe_url }}

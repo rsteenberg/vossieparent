@@ -1,0 +1,866 @@
+Below is a consolidated engineering build spec & coding instruction for the system we discussed: a Django‑based identity and comms service for parents, with login‑time validation against Dynamics 365 (Dataverse), opt‑in mailers, safe email‑change flows, and scheduled/batch delivery at scale (50k+). It’s organized so you can implement it module by module.
+
+0) Goals & non‑goals
+
+Goals
+
+Separate “Parents Identity” surface from your core systems.
+
+Authenticate parents locally; validate associations against Dynamics 365 at login time (“identity lease”).
+
+Parents must explicitly opt‑in to mailers.
+
+Robust email change process that prevents privilege escalation.
+
+Scalable scheduled mail dispatch (50k+) with bounce/complaint tracking.
+
+All sensitive provider calls from server‑side only (no front‑end exposure).
+
+Non‑goals
+
+No real‑time bidirectional sync with Dynamics.
+
+No external low‑code orchestrator (n8n/Airflow) in the baseline—everything in Django + Django RQ.
+
+1) High‑level architecture
+[Parents Web/UI] ──> [Django app]
+                        │
+                        ├── Local auth (Django + allauth)
+                        │
+                        ├── “Identity lease” service
+                        │     ↳ Validates against Dynamics at login (server-side OAuth)
+                        │     ↳ Caches result for short TTL
+                        │
+                        ├── Mailer service (Anymail + ESP)
+                        │     ↳ Templates (Django templates)
+                        │     ↳ Opt-in/consent & preferences
+                        │     ↳ Webhook receiver (bounces/complaints)
+                        │
+                        ├── Tasks & scheduling (Django RQ + rq-scheduler)
+                        │     ↳ Campaign kickoff → batch fan-out → send jobs
+                        │
+                        └── Admin/ops (Django admin + django-rq dashboard)
+
+2) Key Django apps & dependencies
+
+Apps
+
+accounts/ – user model, email-change flow, identity lease
+
+students/ – Student, Parent↔Student linking
+
+crm/ – Dynamics (Dataverse) Web API client
+
+mailer/ – templates, campaigns, events, webhooks
+
+jobs/ – RQ tasks and scheduling
+
+Packages
+
+django-allauth (email-first auth, email verification)
+
+django-rq + rq-scheduler (background jobs + periodic schedules)
+
+django-anymail (ESP integration; use SES, SendGrid, Mailgun, etc.)
+
+msal (Azure AD OAuth for Dataverse)
+
+djangorestframework (webhooks / APIs)
+
+argon2-cffi (password hasher)
+
+django-axes (optional: lockouts/rate limiting)
+
+3) Settings (snippets)
+# settings.py
+INSTALLED_APPS += [
+    "django.contrib.sites",
+    "allauth", "allauth.account",
+    "django_rq",
+    "anymail",
+    "rest_framework",
+    # your local apps
+    "accounts", "students", "crm", "mailer", "jobs",
+]
+
+AUTH_USER_MODEL = "accounts.User"  # custom user; see models below
+SITE_ID = 1
+
+# Allauth: email-first, verify on signup and email change
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+LOGIN_REDIRECT_URL = "/"
+
+# Argon2 for strong password hashing
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.Argon2PasswordHasher"]
+
+# RQ
+RQ_QUEUES = {
+    "default": {"HOST": "localhost", "PORT": 6379, "DB": 0, "DEFAULT_TIMEOUT": 600},
+    "mail":    {"HOST": "localhost", "PORT": 6379, "DB": 0, "DEFAULT_TIMEOUT": 600},
+}
+# If you use rq-scheduler, run its separate process and point it at the same Redis.
+
+# Anymail (example for SendGrid; swap for your ESP)
+ANYMAIL = {"SENDGRID_API_KEY": os.environ.get("SENDGRID_API_KEY")}
+EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
+DEFAULT_FROM_EMAIL = "School <no-reply@school.example>"
+
+# Dynamics / Dataverse (server-to-server)
+DYNAMICS_TENANT_ID = os.environ["DYN_TENANT_ID"]
+DYNAMICS_CLIENT_ID = os.environ["DYN_CLIENT_ID"]
+DYNAMICS_CLIENT_SECRET = os.environ["DYN_CLIENT_SECRET"]
+DYNAMICS_ORG_URL = os.environ["DYN_ORG_URL"]  # e.g., https://org.crm.dynamics.com
+DYNAMICS_SCOPE = f"{os.environ['DYN_ORG_URL']}/.default"
+
+# Identity lease
+IDENTITY_LEASE_TTL_SECONDS = 3600  # 1 hour
+
+
+urls.py:
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("django-rq/", include("django_rq.urls")),  # dashboard
+    path("webhooks/email/", include("mailer.webhooks_urls")),
+    # allauth URLs (login/logout/signup/confirm):
+    path("accounts/", include("allauth.urls")),
+]
+
+4) Data model (core)
+# accounts/models.py
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+
+class User(AbstractUser):
+    username = None  # email-as-username
+    email = models.EmailField(unique=True)
+    is_parent = models.BooleanField(default=True)  # baseline: only parents here
+    external_parent_id = models.CharField(max_length=64, blank=True, null=True)  # Dataverse contact id
+    last_validated_at = models.DateTimeField(blank=True, null=True)  # for identity lease
+    EMAIL_FIELD = "email"
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+class EmailPreference(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="email_pref")
+    marketing_opt_in = models.BooleanField(default=False)  # your “mailer” consent
+    # track consent provenance
+    consent_source = models.CharField(max_length=64, blank=True, null=True)
+    consent_timestamp = models.DateTimeField(default=timezone.now)
+
+class EmailChangeRequest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    new_email = models.EmailField()
+    old_email_token = models.CharField(max_length=64)
+    new_email_token = models.CharField(max_length=64)
+    confirmed_old = models.BooleanField(default=False)
+    confirmed_new = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+# students/models.py
+class Student(models.Model):
+    external_student_id = models.CharField(max_length=64, unique=True)  # Dataverse id
+    first_name = models.CharField(max_length=64)
+    last_name = models.CharField(max_length=64)
+
+class ParentStudentLink(models.Model):
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    active = models.BooleanField(default=True)
+    source = models.CharField(max_length=32, default="crm")  # provenance
+    last_verified_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        unique_together = [("user", "student")]
+
+# mailer/models.py
+from django.db import models
+
+class EmailTemplate(models.Model):
+    key = models.SlugField(unique=True)
+    subject_template = models.CharField(max_length=200)
+    html_template_path = models.CharField(max_length=200)  # e.g. "emails/progress_update.html"
+    text_template_path = models.CharField(max_length=200, blank=True, null=True)
+
+class Campaign(models.Model):
+    name = models.CharField(max_length=128)
+    template = models.ForeignKey(EmailTemplate, on_delete=models.PROTECT)
+    enabled = models.BooleanField(default=False)
+    schedule_cron = models.CharField(max_length=64)  # e.g., "0 8 * * MON"
+    last_run_at = models.DateTimeField(blank=True, null=True)
+
+class EmailEvent(models.Model):
+    user = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
+    campaign = models.ForeignKey(Campaign, on_delete=models.SET_NULL, null=True, blank=True)
+    event = models.CharField(max_length=32)  # delivered, bounced, complained, opened, clicked, etc.
+    provider_id = models.CharField(max_length=128, blank=True, null=True)
+    email = models.EmailField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    payload = models.JSONField(default=dict, blank=True)
+
+5) Identity lease: login‑time validation against Dynamics
+
+Flow
+
+Parent logs in (local Django credentials).
+
+Immediately call Dataverse to validate:
+
+Parent contact exists (by external_parent_id or by verified email).
+
+Parent↔Student associations are current & active.
+
+Cache a lease: set user.last_validated_at and update ParentStudentLink rows.
+
+Middleware guards high‑risk views: if now - last_validated_at > TTL, re‑validate (silent server call). If invalid, revoke access to student data (and optionally log the user out).
+
+Dynamics client (server‑side only)
+
+# crm/msal_client.py
+import msal, requests, time
+from django.conf import settings
+from django.core.cache import cache
+
+TOKEN_CACHE_KEY = "dyn_app_token"
+
+def get_app_token():
+    cached = cache.get(TOKEN_CACHE_KEY)
+    if cached and cached["expires_at"] > time.time() + 30:
+        return cached["access_token"]
+    app = msal.ConfidentialClientApplication(
+        client_id=settings.DYNAMICS_CLIENT_ID,
+        client_credential=settings.DYNAMICS_CLIENT_SECRET,
+        authority=f"https://login.microsoftonline.com/{settings.DYNAMICS_TENANT_ID}",
+    )
+    result = app.acquire_token_for_client(scopes=[settings.DYNAMICS_SCOPE])
+    token = result["access_token"]
+    cache.set(TOKEN_CACHE_KEY, {"access_token": token, "expires_at": time.time() + result["expires_in"] - 30}, result["expires_in"])
+    return token
+
+def dyn_get(path, params=None):
+    token = get_app_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "OData-MaxVersion": "4.0",
+        "OData-Version": "4.0",
+        "Accept": "application/json",
+    }
+    url = f"{settings.DYNAMICS_ORG_URL}/api/data/v9.2/{path.lstrip('/')}"
+    r = requests.get(url, headers=headers, params=params, timeout=20)
+    r.raise_for_status()
+    return r.json()
+
+# crm/service.py
+from accounts.models import User
+from students.models import Student, ParentStudentLink
+from django.utils import timezone
+
+def validate_parent(user: User) -> bool:
+    """
+    Look up the parent's contact and their student link(s) in Dataverse.
+    Update local links; return True if at least one active link exists.
+    """
+    # Example: by external id if stored; otherwise by verified email
+    if user.external_parent_id:
+        contact = dyn_get(f"contacts({user.external_parent_id})")
+    else:
+        # NOTE: replace filter with your actual schema/fields
+        res = dyn_get("contacts", params={"$select": "contactid,emailaddress1,firstname,lastname",
+                                          "$filter": f"emailaddress1 eq '{user.email}'"})
+        values = res.get("value", [])
+        contact = values[0] if values else None
+
+    if not contact:
+        return False
+
+    # Resolve student relationships via your Dataverse schema (examples below are placeholders):
+    # e.g., custom relationship table: new_parentstudentlinks where _parentid_value == contactid
+    links = dyn_get("new_parentstudentlinks", params={"$filter": f"_parentid_value eq {contact['contactid']} and statecode eq 0"})
+    active_students = []
+    for row in links.get("value", []):
+        external_student_id = row["_studentid_value"]
+        st, _ = Student.objects.get_or_create(external_student_id=external_student_id)
+        ParentStudentLink.objects.update_or_create(
+            user=user, student=st, defaults={"active": True, "last_verified_at": timezone.now()}
+        )
+        active_students.append(st.id)
+
+    # Deactivate stale links locally
+    ParentStudentLink.objects.filter(user=user).exclude(student_id__in=active_students).update(active=False)
+
+    user.external_parent_id = contact["contactid"]
+    user.last_validated_at = timezone.now()
+    user.save(update_fields=["external_parent_id", "last_validated_at"])
+    return bool(active_students)
+
+
+Where to call validation
+
+On login success (allauth signal): user_logged_in → validate_parent(user)
+
+Middleware for protected views (re‑validate if lease expired).
+
+6) Preventing email‑change privilege escalation
+
+Principles
+
+Never use email as the authorization join key to students. Use stable external IDs from Dataverse.
+
+Lock down email change with two‑party confirmation:
+
+Confirm via old email and 2) verify new email.
+
+Optional admin approval for sensitive cases.
+
+Implementation outline
+
+Provide a “Change email” view that creates EmailChangeRequest with two tokens.
+
+Send one message to the old address (“Approve change”) and one to the new address (“Verify address”).
+
+When both tokens are confirmed (and within expiry), update user.email and allauth EmailAddress entries; re‑issue session.
+
+7) Opt‑in & preferences
+
+On registration, show a checkbox for “receive progress updates” → set EmailPreference.marketing_opt_in=True and collect consent metadata.
+
+Expose a preferences page and an unsubscribe link in every email (see §10).
+
+8) Email authoring & templating
+
+Use Django templates stored under templates/emails/….
+
+Keep HTML and plain text versions.
+
+Context building should aggregate all of a parent’s active students for that send.
+
+# mailer/rendering.py
+from django.template.loader import render_to_string
+
+def render_email(template, context):
+    subject = template.subject_template.format(**context.get("subject_vars", {}))
+    html_body = render_to_string(template.html_template_path, context)
+    text_body = render_to_string(template.text_template_path, context) if template.text_template_path else None
+    return subject, text_body, html_body
+
+9) Scheduled sends at scale (Django RQ)
+
+Patterns
+
+Orchestrator job (per campaign schedule) selects recipients and enqueues batch jobs (e.g., batches of 500–1,000).
+
+Batch job builds context and enqueues send jobs per recipient, or uses ESP bulk API if available.
+
+Respect ESP rate limits; configure queue concurrency for throughput (e.g., 5–20 workers on mail queue).
+
+# jobs/tasks.py
+import django_rq
+from django_rq import job
+from django.db.models import Q
+from django.utils import timezone
+from mailer.models import Campaign
+from accounts.models import User
+from mailer.sending import send_email_to_parent
+
+@job("default")  # orchestrator
+def kickoff_campaign(campaign_id: int):
+    campaign = Campaign.objects.get(pk=campaign_id)
+    qs = User.objects.filter(is_parent=True, email_pref__marketing_opt_in=True, is_active=True)
+    # shard recipients
+    batch_size = 1000
+    ids = list(qs.values_list("id", flat=True))
+    for i in range(0, len(ids), batch_size):
+        enqueue_batch_send.delay(campaign_id, ids[i:i+batch_size])
+
+@job("mail")
+def enqueue_batch_send(campaign_id: int, user_ids: list[int]):
+    for uid in user_ids:
+        send_parent_update.delay(campaign_id, uid)
+
+@job("mail")
+def send_parent_update(campaign_id: int, user_id: int):
+    # Build personalized context (all active students for this parent)
+    user = User.objects.get(pk=user_id)
+    from students.models import ParentStudentLink
+    students = (
+        ParentStudentLink.objects.select_related("student")
+        .filter(user=user, active=True)
+        .values_list("student__first_name", "student__last_name")
+    )
+    context = {"parent": user, "students": list(students)}
+    send_email_to_parent(campaign_id, user, context)
+
+
+Scheduling (cron‑like)
+
+Use rq-scheduler or django-rq’s scheduler integration to register repeating jobs per Campaign.schedule_cron (e.g., “0 8 * * MON”).
+
+Keep a small management command that (re)applies schedules from DB to the scheduler on deploy.
+
+10) Sending + unsubscribe + idempotency
+# mailer/sending.py
+from anymail.message import AnymailMessage
+from django.urls import reverse
+from django.core.signing import TimestampSigner, BadSignature
+
+def unsubscribe_link(user):
+    signer = TimestampSigner()
+    token = signer.sign(str(user.pk))
+    return f"{settings.SITE_URL}{reverse('mailer:unsubscribe')}?t={token}"
+
+def send_email_to_parent(campaign_id, user, context):
+    from mailer.models import Campaign
+    campaign = Campaign.objects.get(pk=campaign_id)
+    template = campaign.template
+    context = {**context, "unsubscribe_url": unsubscribe_link(user)}
+    subject, text, html = render_email(template, context)
+
+    msg = AnymailMessage(subject=subject, to=[user.email])
+    if text: msg.body = text
+    msg.attach_alternative(html, "text/html")
+    # idempotency: set a custom header with campaign+user to dedupe at ESP if supported
+    msg.metadata = {"campaign_id": campaign_id, "user_id": user.id}
+    msg.tags = [campaign.name]
+    msg.send()
+
+
+Unsubscribe view
+
+Parse and verify the signed token, set marketing_opt_in=False, store timestamp/source.
+
+11) Delivery events (bounces/complaints) via webhooks
+
+Use Anymail’s tracking signals to get provider‑agnostic events.
+
+On bounce/complaint → mark the user as needs_attention or auto‑disable opt‑in until details are corrected.
+
+# mailer/signals.py
+from anymail.signals import tracking
+from django.dispatch import receiver
+from mailer.models import EmailEvent
+
+@receiver(tracking)
+def handle_tracking(sender, event, esp_name, **kwargs):
+    EmailEvent.objects.create(
+        user_id=event.metadata.get("user_id"),
+        campaign_id=event.metadata.get("campaign_id"),
+        event=event.event_type,  # "bounced", "complained", "delivered", ...
+        provider_id=event.event_id,
+        email=event.recipient,
+        payload=event.esp_event,
+    )
+    if event.event_type in {"bounced", "complained"}:
+        # optional: auto-disable mailer for this user, and/or create a “follow up” case
+        from accounts.models import EmailPreference, User
+        if event.metadata.get("user_id"):
+            user = User.objects.filter(id=event.metadata["user_id"]).first()
+            if user and hasattr(user, "email_pref"):
+                ep = user.email_pref
+                ep.marketing_opt_in = False
+                ep.save(update_fields=["marketing_opt_in"])
+
+
+urls for webhooks (Anymail provides provider‑specific webhook views you can include; alternatively expose a DRF endpoint and pass events through to the signal handler).
+
+12) Admin/ops UX
+
+Django admin:
+
+Users, Students, ParentStudentLink (readonly external IDs)
+
+EmailPreference (consent audit)
+
+Campaigns & EmailTemplates
+
+EmailEvent (filters by event type)
+
+django-rq dashboard at /django-rq/:
+
+Monitor queues, failed jobs, requeue, schedule.
+
+13) Access control & object‑level checks
+
+Views that expose student data must filter by ParentStudentLink.active=True and current user.
+
+Add a permission helper:
+
+def parent_can_view_student(user, student_id) -> bool:
+    if not user.is_authenticated or not user.is_parent:
+        return False
+    # re-check lease (optional middleware can do this centrally)
+    from django.utils import timezone
+    ttl = settings.IDENTITY_LEASE_TTL_SECONDS
+    if not user.last_validated_at or (timezone.now() - user.last_validated_at).total_seconds() > ttl:
+        from crm.service import validate_parent
+        if not validate_parent(user):
+            return False
+    return ParentStudentLink.objects.filter(user=user, student_id=student_id, active=True).exists()
+
+
+Use this guard (or a decorator) anywhere student data is served.
+
+14) Performance/scale guidelines (50k+)
+
+Use batch fan‑out with RQ; choose a mail queue with multiple workers.
+
+Set ESP rate limits (per minute) and use worker concurrency accordingly.
+
+Fetch parents using .only("id","email") or .values_list(...) to minimize ORM overhead.
+
+For content that’s identical (e.g., school‑wide newsletter), use ESP bulk send when available.
+
+Idempotency: ensure one message per (campaign, user). Store a MessageLog or use ESP metadata and dedupe before sending.
+
+Retry with backoff on transient ESP errors.
+
+15) Security considerations
+
+All Dynamics/Dataverse traffic only from server-side using msal client credentials.
+
+Store secrets in environment variables; rotate regularly.
+
+CSRF on forms; session cookies HttpOnly, Secure, SameSite=Lax/Strict.
+
+Brute force protection with django-axes (optional).
+
+Audit log: email change attempts, lease validation failures, webhook events.
+
+16) Testing checklist
+
+Unit tests for:
+
+validate_parent() happy/edge cases (mock Dataverse responses).
+
+Email change double‑confirmation flow (tokens, expiry).
+
+Unsubscribe link validity and tamper resistance.
+
+Permission guard on student data.
+
+Integration tests:
+
+Full campaign run on a small fixture set.
+
+Webhook processing (bounce → opt‑out).
+
+17) Minimal implementation sequence (checklist)
+
+Project setup: custom User, allauth config, Argon2.
+
+Models: Student, ParentStudentLink, EmailPreference.
+
+Dynamics client (msal_client.py) and validate_parent() service.
+
+Login hook: connect user_logged_in to validate_parent(); add middleware for TTL renewals.
+
+Email change flow with two‑party confirmation.
+
+Mailer: templates + rendering; Campaign, EmailEvent.
+
+Jobs: RQ queues; implement kickoff_campaign → enqueue_batch_send → send_parent_update.
+
+Scheduler: provision rq-scheduler; cron schedules from Campaign.schedule_cron.
+
+Webhooks: Anymail tracking signal ⇢ persist events; auto‑opt‑out on bounce/complaint.
+
+Admin & dashboard: register models; enable /django-rq/.
+
+Scale tune: batch size, worker count, rate limits, idempotency.
+
+18) Example email template (HTML)
+<!-- templates/emails/progress_update.html -->
+<!doctype html>
+<html>
+  <body>
+    <p>Hi {{ parent.first_name|default:"there" }},</p>
+    <p>Here’s this week’s update for {% if students|length == 1 %}your child{% else %}your children{% endif %}:</p>
+    <ul>
+      {% for first,last in students %}
+        <li><strong>{{ first }} {{ last }}</strong>: progress summary goes here…</li>
+      {% endfor %}
+    </ul>
+    <p>If you no longer wish to receive these, you can
+      <a href="{{ unsubscribe_url }}">unsubscribe here</a>.</p>
+  </body>
+</html>
+
+Notes & adaptations
+
+Dataverse schema: Replace the placeholder table/field names with your actual environment (e.g., whether students are contacts, a custom table, or whether the relationship is via a custom N:N table). Keep the same pattern: resolve parent contact → fetch active student links → update local links.
+
+ESP choice: Anymail abstracts providers. Start with one (SES/SendGrid/Mailgun) and switch later without rewriting business logic.
+
+Alternative queues: You can swap RQ with Celery later; the orchestration pattern (kickoff → batch → send) remains identical.
+
+---
+
+# Part II — Eduvos Parent Portal (Product + Engineering Spec)
+
+This section extends the identity and comms baseline (Part I) into a fully featured Eduvos Parent Portal. It defines product scope, UX, backend data model, integrations, and operational/non‑functional requirements to take the portal to production.
+
+0) Purpose & outcomes
+
+- Give parents/guardians a secure, self‑service view of their students’ academic progress, attendance, timetables, financials, and official communications.
+- Reduce calls to support by enabling self‑service profile updates, preferences, and document downloads.
+- Respect POPIA with explicit consent, least privilege, and full auditability.
+
+1) Scope (features)
+
+- Authentication & account
+  - Email‑first login with verification (allauth) and identity lease against Dataverse (Part I).
+  - Multi‑student switcher for parents linked to more than one student.
+  - Email change with double confirmation (Part I). Preferences/consent management.
+
+- Home/Dashboard
+  - Welcome header with parent name; student switch control.
+  - Cards: Attendance (YTD %, last 7 days), Grades (latest results), Timetable (today), Financials (balance snapshot), Notices.
+  - Quick actions: Preferences, Change email, Download statement, Contact support.
+
+- Academics
+  - Modules/Courses for active term with credit, lecturer, campus info.
+  - Grades per assessment item and module final where available; status: Draft/Published.
+  - Timetable (week view) incl. room/venue; Exam schedule.
+  - Progress report download (PDF) when published.
+
+- Attendance
+  - Daily/period attendance summary (Present/Absent/Late/Excused) with filters by date range and module.
+  - Aggregate KPIs with visual trend.
+
+- Financials
+  - Account summary: balance, aging buckets.
+  - Invoices/Statements listing (PDF download). Payments history.
+  - Future: Online payment integration (gateway) with reconciliation (out of baseline; see §10).
+
+- Communications
+  - Announcements and notices from Eduvos (with categories and read/unread).
+  - Email preferences (Part I) and unsubscribe link in all mailers.
+
+- Documents
+  - Official docs (policies, guides) and student documents (letters, certificates) exposed for download based on availability.
+
+- Support
+  - Submit a support request/ticket; optional category (Academic/Financial/Technical).
+  - Auto‑acknowledge mail and admin queue in Django admin.
+
+2) IA/Navigation (baseline)
+
+- Top‑level: Dashboard, Academics, Attendance, Financials, Documents, Support, Settings.
+- Student switcher persistent in header when >1 linked student.
+- Root “/” shows login when logged out; shows Dashboard when logged in (baseline implemented in app).
+
+3) Data model (portal additions)
+
+Note: Keep authoritative IDs from upstream systems (Dataverse/SIS/Finance). All models below are additive to Part I.
+
+```text
+students/
+  Student (existing): external_student_id, first_name, last_name
+  ParentStudentLink (existing): user, student, active, last_verified_at
+
+academics/
+  Term: external_term_id, name, start_date, end_date, is_current
+  Module: external_module_id, code, title, credits
+  Enrollment: student(FK), module(FK), term(FK), status, lecturer_name, campus
+  GradeItem: enrollment(FK), name, weight, max_score, score, percentage, status(DRAFT|PUBLISHED), published_at
+  ExamSlot: enrollment(FK), starts_at, ends_at, venue, seat
+
+attendance/
+  AttendanceRecord: enrollment(FK), date, slot(optional), status(PRESENT|ABSENT|LATE|EXCUSED), note
+
+financials/
+  FeeAccount: student(FK), external_account_id
+  Invoice: account(FK), external_invoice_id, number, amount, due_date, status, pdf_url
+  Payment: account(FK), external_payment_id, amount, status, provider_ref, captured_at
+
+content/
+  Announcement: title, body_html, category, severity, published_at, expires_at, is_active, audience(ALL|PARENT|STUDENT|MODULE), to_user(FK optional), student(FK optional), module(FK optional), created_by(FK user)
+  ReadReceipt: user(FK), announcement(FK), read_at
+  Document: student(FK optional), title, category, file_url, published_at, expires_at, is_public
+
+support/
+  Ticket: user(FK), student(FK optional), category, subject, body, status, created_at, updated_at
+
+compliance/
+  ConsentRecord: user(FK), key, value(bool/JSON), source, timestamp
+  AuditLog: actor_user(FK), action, target_model, target_id, meta(JSON), at
+```
+
+4) Integrations & data flows
+
+- Source systems
+  - Parent↔Student, Person master: Dataverse (D365). Already used for identity lease.
+  - Academics (enrolments, grades, attendance, timetable): SIS (Dataverse tables or separate API). Define exact tables/fields in environment mapping doc.
+  - Financials (invoices, statements, payments): Finance system (ERP/Dataverse). Provide REST endpoints or shared file drops.
+
+- Sync strategy
+  - Nightly and on‑demand deltas using background jobs (Django RQ). Favor snapshot pulls with updated_since filtering.
+  - Idempotent upserts by external IDs. Never try to “own” upstream data in portal DB.
+
+- Authentication to providers
+  - Dataverse via `msal` client credentials (Part I).
+  - Other systems via server‑to‑server OAuth2 or signed webhook/file exchange.
+
+5) Backend services (Django apps)
+
+- Recommended app split (alongside Part I): `academics/`, `attendance/`, `financials/`, `content/`, `support/`.
+- Each app exposes:
+  - Models (as above), admin registrations, serializers (DRF), and query services.
+  - Read‑only views for parents guarded with `parent_can_view_student()` (Part I §13) and/or a decorator.
+  - Importers: idempotent upserts from provider JSON payloads.
+
+6) Views/Pages (baseline HTML, upgradable to templates later)
+
+- Dashboard: aggregates quick stats for selected student.
+- Academics: list of modules → module detail (assessments, grades, exam slot).
+- Attendance: day/period table + filters; summary aggregates.
+- Financials: account summary, invoices list (download PDF), payments list.
+- Documents: available documents filtered by student/visibility.
+- Support: new ticket form + status list; emails on update.
+- Settings: Email preferences and change email (already implemented), logout.
+
+7) Access control
+
+- All student‑scoped endpoints call `parent_can_view_student(user, student_id)`; for list pages, filter by linked students only.
+- Keep object‑level checks in queryset builders to avoid mistakes in templates.
+- Lease TTL revalidation via middleware (Part I) before accessing sensitive endpoints.
+
+8) APIs (internal)
+
+- Use small DRF serializers/viewsets for async widgets if needed (e.g., dashboard cards). Keep server‑rendered HTML for baseline.
+- Example read‑only endpoints (all guarded):
+  - GET /api/students/{id}/enrollments/ → modules + lecturer + term
+  - GET /api/enrollments/{id}/grades/ → grade items
+  - GET /api/students/{id}/attendance?from=&to= → records + aggregates
+  - GET /api/students/{id}/financials/invoices/ → invoices
+
+9) Background jobs (RQ)
+
+- Schedulers: nightly 02:00 local time: pull enrollments, grades (published only), attendance, invoices, payments.
+- Tasks:
+  - sync_enrollments(term) → upsert Enrollments/Modules/Terms.
+  - sync_grades(term) → upsert GradeItems with status.
+  - sync_attendance(range) → upsert AttendanceRecord.
+  - sync_financials(range) → upsert invoices/payments and pre‑sign statement URLs if needed.
+- Metrics: counters for created/updated/skipped and error logs per job run.
+
+10) Financials (payments)
+
+- Baseline: read‑only view of invoices/payments; statement/invoice PDFs via provider URL.
+- Future: card/eFT payments via a gateway (e.g., PayGate, PayFast). Pattern:
+  - Create PaymentIntent record → redirect to gateway → webhook confirms → reconcile to Payment and optionally POST back to Finance.
+  - Security: webhook signatures verification, replay protection, idempotent updates.
+
+11) Security, privacy, compliance
+
+- POPIA alignment: consent capture, purpose limitation, data minimisation, and rights to opt‑out of marketing.
+- All provider calls server‑side; no secrets in browser.
+- CSRF on forms; session cookie HttpOnly, Secure, SameSite=Lax/Strict (per environment); strong password hashing (Argon2).
+- Brute force protection with django-axes (optional but recommended).
+- Audit trails: Email change events, validations, login events, data exports/downloads, unsubscribe actions.
+
+12) Performance & SLAs
+
+- Expected parent base: 50k+; concurrent users modest outside peak periods (term starts, grade releases).
+- Read patterns dominate; use select_related/values_list and only() to minimise ORM overhead.
+- Cache static content and configuration (announcements list) with short TTLs.
+
+13) Admin & operations
+
+- Django admin: manage Announcements, Documents, Tickets; view read receipts and message logs.
+- django-rq dashboard: monitor sync jobs and campaign sends.
+- Feature flags in DB or settings to stage pages (e.g., hide Financials until ready).
+
+14) Rollout plan (phased)
+
+- Phase 1: Auth + Dashboard + Academics + Preferences + Unsubscribe + Campaigns.
+- Phase 2: Attendance + Financials (read‑only) + Documents.
+- Phase 3: Support tickets + Online payments + Advanced notifications.
+
+15) Testing
+
+- Unit: permission guards, importers, serializers, view logic.
+- Integration: end‑to‑end flows for login → dashboard; sync tasks with provider mocks.
+- Security: CSRF, unsubscribe tampering, email change flow, webhook signature verification (for payments).
+
+16) UX & accessibility
+
+- WCAG‑aware markup; keyboard accessible forms; clear error/success states.
+- Mobile‑first responsive layout.
+
+17) Open items to confirm with Eduvos
+
+- Exact Dataverse/SIS table and field mappings for enrollments/grades/attendance.
+- Finance system endpoints for invoices/statements and payments (if any).
+- Branding and UI theme; content style for announcements.
+
+18) Notices (targeting, UI, and email digest)
+
+- Audience types and routing
+  - Personal to parent: staff → specific parent (Announcement.to_user=user).
+  - Student‑scoped: message about a specific student (Announcement.student in parent’s linked students).
+  - Course/module‑scoped: message tied to a module (Announcement.module in the parent’s student enrollments).
+  - General to parents: broad notices (Announcement.audience in {ALL,PARENT}).
+  - All notices respect is_active, published_at/expires_at.
+
+- Data model (additions clarified)
+  - Announcement.severity: INFO|WARNING|URGENT (badge styling).
+  - Announcement.audience: ALL|PARENT|STUDENT|MODULE with optional selectors: to_user, student, module.
+  - ReadReceipt(user, announcement, read_at) for “unread” state.
+
+- UI buckets (Announcements page)
+  - Show 4 clearly separated sections with counts:
+    1) Personal messages to you
+    2) Notices about your student(s)
+    3) Course/module notices
+    4) General notices for parents
+  - Each item: title, severity badge, published_at, issuer (created_by), short HTML preview.
+  - Filters: severity, date range, student selector when >1.
+  - Mark as read on click (create ReadReceipt).
+
+- Email reminders (digest)
+  - Weekly/daily digest includes the same 4 buckets; subject e.g. “Your weekly Eduvos notices”.
+  - Each bucket included only if it has items (limit N, e.g., 5 per bucket; link to Announcements page for more).
+  - Template styling similar to site; unsubscribe link included. Reuses Campaign/EmailTemplate.
+  - Digest selection window: default 7 days (configurable).
+
+- Admin/ops
+  - Admin can author announcements with audience and selectors.
+  - List filters by severity, category, audience; search by title/body.
+  - Metrics: sent/read counts via ReadReceipt.
+
+---
+
+# Changelog
+
+- [2025-10-23] Notices, UI scaffolding, and email digest
+  - Files changed
+    - `content/models.py`, `content/admin.py`, `content/services.py`, `content/views.py`, `content/urls.py`
+    - `jobs/tasks.py`, `static/css/app.css`
+    - `templates/content/announcements.html`, `templates/content/announcement_detail.html`, `templates/content/documents.html`
+    - `templates/emails/notices_digest.html`, `templates/emails/notices_digest.txt`
+    - `templates/base.html`, `templates/home.html`
+    - `config/settings.py` (static files, app registration), `config/urls.py`
+  - Behavior impact
+    - Announcements page shows 4 buckets: Personal, Student, Module, General. Read receipts recorded on view.
+    - Home page renders a dashboard layout with sidebar navigation and quick links.
+    - Email digest includes the same 4 buckets with absolute links back to the portal and unsubscribe.
+  - Data model
+    - `Announcement` extended with `severity`, `audience`, `to_user`, `student`, `module`, `created_by`.
+    - `ReadReceipt` unchanged (tracks read state per user/announcement).
+  - Jobs
+    - `jobs/tasks.py::send_parent_update` now injects `notices` (7-day window) and `subject_vars` into campaign context, capped to 5 per bucket.
+  - Emails/templates
+    - Add `EmailTemplate` in admin for digest with:
+      - `subject_template`: `Your Eduvos notices ({total})`
+      - `html_template_path`: `emails/notices_digest.html`
+      - `text_template_path`: `emails/notices_digest.txt`
+    - Create a `Campaign` pointing to this template and schedule weekly (e.g., `0 7 * * MON`).
+  - Security/Privacy
+    - Detail view permission checks per audience; read receipts created only for authorized users.
+  - Rollout/Flags
+    - Migrate DB, register EmailTemplate + Campaign, author sample announcements in admin.

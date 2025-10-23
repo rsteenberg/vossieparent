@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}Dashboard · Eduvos Parent Portal{% endblock %}
+
+{% block content %}
+<div class="vstack">
+  <div class="card">
+    <div class="hstack between">
+      <div>
+        <div class="section-title">Welcome, {{ name }}</div>
+        <div class="muted">Active student: {{ student_label }} — <a href="{{ students_list_url }}">Change</a></div>
+      </div>
+      <div>
+        <a class="tab" href="{{ prefs_url }}">Email preferences</a>
+        <a class="tab" href="{{ announcements_url }}">Announcements</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <a class="tab" href="{{ academics_url }}">📘 Academics</a>
+      <a class="tab" href="{{ attendance_url }}">🗓 Attendance</a>
+      <a class="tab" href="{{ financials_url }}">💳 Financials</a>
+      <a class="tab" href="{{ documents_url }}">📂 Documents</a>
+      <a class="tab" href="{{ support_url }}">🛟 Support</a>
+    </div>
+    <div class="filters mt-3">
+      <select class="select" title="Filter: General"><option>General</option></select>
+      <select class="select" title="Filter: Studies"><option>Studies</option></select>
+      <select class="select" title="Filter: Finances"><option>Finances</option></select>
+      <select class="select" title="Filter: Administration"><option>Administration</option></select>
+      <select class="select" title="Filter: Campus"><option>Campus</option></select>
+      <select class="select" title="Filter: Services"><option>Services</option></select>
+    </div>
+  </div>
+
+  <div class="vstack">
+    <div class="section-title">Links</div>
+    <div class="grid">
+      <a class="tile" href="/academics/"><span>📚</span> <span>Modules & grades</span></a>
+      <a class="tile" href="/attendance/"><span>🕒</span> <span>Attendance</span></a>
+      <a class="tile" href="/financials/"><span>🧾</span> <span>Invoices & payments</span></a>
+      <a class="tile" href="/documents/"><span>📄</span> <span>Documents</span></a>
+      <a class="tile" href="/announcements/"><span>📢</span> <span>Notices</span></a>
+      <a class="tile" href="/students/"><span>👪</span> <span>My students</span></a>
+      <a class="tile" href="/parents/preferences/"><span>✉️</span> <span>Email preferences</span></a>
+      <a class="tile" href="/support/"><span>🛟</span> <span>Support</span></a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Change email</div>
+    <form method="post" action="{{ change_email_url }}">
+      {% csrf_token %}
+      <input type="email" name="new_email" placeholder="new email" required class="input">
+      <button type="submit" class="tab">Start change</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

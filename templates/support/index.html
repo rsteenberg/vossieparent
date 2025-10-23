@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block page_title %}Support · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Support</div>
+  {% if submitted %}
+    <div class="card"><div class="muted">Ticket submitted. We'll get back to you.</div></div>
+  {% endif %}
+  <div class="card">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-stack">
+        <input type="text" name="subject" placeholder="Subject" required class="input">
+        <textarea name="body" placeholder="Describe your issue" required class="textarea"></textarea>
+        <select name="category" class="select" title="Category">
+          <option>Academic</option>
+          <option>Financial</option>
+          <option>Technical</option>
+        </select>
+        <input type="text" name="student_id" placeholder="Student ID (optional)" class="input">
+        <button type="submit" class="tab">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

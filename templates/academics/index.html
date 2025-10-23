@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_title %}Academics · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Academics</div>
+  {% if not active_student_id %}
+    <div class="card"><div class="muted">Select a student to view enrollments and grades.</div></div>
+  {% else %}
+    <div class="card"><div class="muted">Showing academics for student ID {{ active_student_id }}. (Coming soon)</div></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block page_title %}Notice · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="card">
+    <div class="hstack between">
+      <div class="section-title">{{ ann.title }}</div>
+      <span class="badge {{ ann.severity|lower }}">{{ ann.severity }}</span>
+    </div>
+    <div class="muted">Published {{ ann.published_at }}</div>
+    <div class="mt-2">{{ ann.body_html|safe }}</div>
+  </div>
+  <div><a class="tab" href="{% url 'content:announcements' %}">Back to announcements</a></div>
+</div>
+{% endblock %}

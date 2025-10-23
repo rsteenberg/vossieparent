@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111;">
+    <div style="background:linear-gradient(90deg,#7a193d,#9c3757);color:#fff;padding:16px 12px;">
+      <div style="max-width:600px;margin:0 auto;font-weight:bold;">Eduvos Parent Portal</div>
+    </div>
+    <div style="max-width:600px;margin:16px auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+      <div style="padding:16px 16px 0 16px;">
+        <h2 style="margin:0 0 6px 0;font-size:18px;">Your notices</h2>
+        <p style="margin:0 0 12px 0;color:#6b7280;">A digest of recent updates from Eduvos.</p>
+      </div>
+
+      {% if notices_counts.total %}
+        {% if notices.personal %}
+        <div style="padding:12px 16px;border-top:1px solid #f0f2f5;">
+          <div style="font-weight:bold;margin-bottom:8px;">Personal messages to you ({{ notices_counts.personal }})</div>
+          {% for a in notices.personal %}
+            <div style="padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;">
+              <div style="font-weight:bold;margin-bottom:4px;">{{ a.title }}</div>
+              <div style="font-size:12px;color:#6b7280;">{{ a.published_at }}</div>
+              <div style="margin-top:6px;"><a href="{{ site_url }}{% url 'content:announcement_detail' a.id %}" style="color:#7a193d;text-decoration:none;">View</a></div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if notices.student %}
+        <div style="padding:12px 16px;border-top:1px solid #f0f2f5;">
+          <div style="font-weight:bold;margin-bottom:8px;">Notices about your student(s) ({{ notices_counts.student }})</div>
+          {% for a in notices.student %}
+            <div style="padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;">
+              <div style="font-weight:bold;margin-bottom:4px;">{{ a.title }}</div>
+              <div style="font-size:12px;color:#6b7280;">{{ a.published_at }}</div>
+              <div style="margin-top:6px;"><a href="{{ site_url }}{% url 'content:announcement_detail' a.id %}" style="color:#7a193d;text-decoration:none;">View</a></div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if notices.module %}
+        <div style="padding:12px 16px;border-top:1px solid #f0f2f5;">
+          <div style="font-weight:bold;margin-bottom:8px;">Course/module notices ({{ notices_counts.module }})</div>
+          {% for a in notices.module %}
+            <div style="padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;">
+              <div style="font-weight:bold;margin-bottom:4px;">{{ a.title }}</div>
+              <div style="font-size:12px;color:#6b7280;">{{ a.published_at }}</div>
+              <div style="margin-top:6px;"><a href="{{ site_url }}{% url 'content:announcement_detail' a.id %}" style="color:#7a193d;text-decoration:none;">View</a></div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if notices.general %}
+        <div style="padding:12px 16px;border-top:1px solid #f0f2f5;">
+          <div style="font-weight:bold;margin-bottom:8px;">General notices for parents ({{ notices_counts.general }})</div>
+          {% for a in notices.general %}
+            <div style="padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;">
+              <div style="font-weight:bold;margin-bottom:4px;">{{ a.title }}</div>
+              <div style="font-size:12px;color:#6b7280;">{{ a.published_at }}</div>
+              <div style="margin-top:6px;"><a href="{{ site_url }}{% url 'content:announcement_detail' a.id %}" style="color:#7a193d;text-decoration:none;">View</a></div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% else %}
+        <div style="padding:16px;">No new notices.</div>
+      {% endif %}
+
+      <div style="padding:16px;border-top:1px solid #f0f2f5;color:#6b7280;font-size:12px;">
+        <div>If you no longer wish to receive these, you can <a href="{{ unsubscribe_url }}" style="color:#7a193d;">unsubscribe here</a>.</div>
+      </div>
+    </div>
+  </body>
+</html>

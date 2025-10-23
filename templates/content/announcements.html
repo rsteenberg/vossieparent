@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block page_title %}Announcements · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Announcements</div>
+
+  <div class="card">
+    <div class="section-title">Personal messages to you</div>
+    {% if personal %}
+      <div class="vstack">
+        {% for a in personal %}
+          <a class="tile" href="{% url 'content:announcement_detail' a.id %}">
+            <span class="badge {{ a.severity|lower }}">{{ a.severity }}</span>
+            <span>{{ a.title }}</span>
+            {% if a.is_read %}<span class="badge">Read</span>{% else %}<span class="badge">Unread</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No personal messages.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Notices about your student(s)</div>
+    {% if student %}
+      <div class="vstack">
+        {% for a in student %}
+          <a class="tile" href="{% url 'content:announcement_detail' a.id %}">
+            <span class="badge {{ a.severity|lower }}">{{ a.severity }}</span>
+            <span>{{ a.title }}</span>
+            {% if a.is_read %}<span class="badge">Read</span>{% else %}<span class="badge">Unread</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No student notices.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Course/module notices</div>
+    {% if module %}
+      <div class="vstack">
+        {% for a in module %}
+          <a class="tile" href="{% url 'content:announcement_detail' a.id %}">
+            <span class="badge {{ a.severity|lower }}">{{ a.severity }}</span>
+            <span>{{ a.title }}</span>
+            {% if a.is_read %}<span class="badge">Read</span>{% else %}<span class="badge">Unread</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No course/module notices.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">General notices for parents</div>
+    {% if general %}
+      <div class="vstack">
+        {% for a in general %}
+          <a class="tile" href="{% url 'content:announcement_detail' a.id %}">
+            <span class="badge {{ a.severity|lower }}">{{ a.severity }}</span>
+            <span>{{ a.title }}</span>
+            {% if a.is_read %}<span class="badge">Read</span>{% else %}<span class="badge">Unread</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No general notices.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

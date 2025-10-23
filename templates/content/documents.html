@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block page_title %}Documents · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Documents</div>
+  {% if active_student_id %}
+    <div class="muted">Showing student-specific and public documents.</div>
+  {% else %}
+    <div class="muted">Showing public documents. Select a student for student-specific docs.</div>
+  {% endif %}
+  <div class="card">
+    <div class="muted">Coming soon.</div>
+  </div>
+</div>
+{% endblock %}

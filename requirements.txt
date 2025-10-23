@@ -1,0 +1,11 @@
+Django
+django-allauth
+djangorestframework
+django-rq
+rq-scheduler
+django-anymail
+msal
+argon2-cffi
+django-axes
+redis
+
