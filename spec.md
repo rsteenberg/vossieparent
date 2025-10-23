@@ -916,3 +916,13 @@ Admin/ops
     - Detail view permission checks per audience; read receipts created only for authorized users.
   - Rollout/Flags
     - Migrate DB, register EmailTemplate + Campaign, author sample announcements in admin.
+
+- [2025-10-23] Sponsor 1 Email (edv_sponsoremail1) lookup helper
+- Files: `crm/service.py`
+- Behavior impact: Internal helpers to verify whether a parent email appears as Sponsor 1 Email on Dataverse `contacts`. Enables login flows or admin checks to gate access based on sponsor linkage if required.
+- Data model: No changes.
+- Integrations/Jobs: Uses Dataverse Web API filter on `contacts` by `edv_sponsoremail1`. No jobs added.
+- Emails/Templates: None.
+- Security/Privacy: Server-to-server OAuth via MSAL using existing app credentials. No additional scopes beyond `DYNAMICS_ORG_URL/.default`.
+- Rollout/Flags: Set `DYN_ORG_URL` to `https://eduvosce.crm4.dynamics.com`. Ensure the app registration has API permissions for Dataverse and that `edv_sponsoremail1` is readable for the application user.
+- Links: N/A
