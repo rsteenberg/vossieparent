@@ -825,16 +825,18 @@ compliance/
 - Email reminders (digest)
   - Weekly/daily digest includes the same 4 buckets; subject e.g. “Your weekly Eduvos notices”.
   - Each bucket included only if it has items (limit N, e.g., 5 per bucket; link to Announcements page for more).
-  - Template styling similar to site; unsubscribe link included. Reuses Campaign/EmailTemplate.
-  - Digest selection window: default 7 days (configurable).
+  - Template styling similar to site; unsubscribe link included.  
+   - Security/Privacy
+    - Detail view permission checks per audience; read receipts created only for authorized users.
+    - Rollout/Flags
+    - Migrate DB, register EmailTemplate + Campaign, author sample announcements in admin.
 
-- Admin/ops
+Admin/ops
   - Admin can author announcements with audience and selectors.
   - List filters by severity, category, audience; search by title/body.
   - Metrics: sent/read counts via ReadReceipt.
 
 ---
-
 # Changelog
 
 - [2025-10-23] Deployment script (server automation)
@@ -848,6 +850,24 @@ compliance/
     - Uses `systemctl` to manage the Gunicorn service; no change to app security.
   - Rollout/Flags
     - Copy to server and run with sudo. Configure variables at top (paths, service name, URLs). Ensure `STATIC_ROOT` is set in `config/settings.py` for collectstatic.
+
+- [2025-10-23] Add .gitignore for Django/Python
+  - Files changed
+    - `.gitignore`
+  - Behavior impact
+    - No spec impact. Prevents committing local env files, caches, compiled bytecode, media uploads, collected static assets, and SQLite DB files.
+  - Data model
+    - No changes.
+  - Jobs/Integrations
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - Reduces risk of committing secrets (e.g., `.env`) and sensitive local files.
+  - Rollout/Flags
+    - If `db.sqlite3` is tracked, run: `git rm --cached db.sqlite3` then commit to stop tracking.
+  - Links
+    - N/A
 
 - [2025-10-23] Auth UI templates and login styling
   - Files changed
