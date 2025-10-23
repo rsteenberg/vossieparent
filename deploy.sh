@@ -94,6 +94,8 @@ main() {
 
   log "Git fetch/pull"
   cd "$PROJECT_DIR"
+  # Auto-stash local changes (including compiled .pyc) to avoid merge failures
+  git stash push -u -m "deploy.sh auto-stash $(date -u +%F_%T)" || true
   git remote -v || true
   git fetch --all --prune
   git checkout "$GIT_BRANCH"

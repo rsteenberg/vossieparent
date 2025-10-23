@@ -926,3 +926,22 @@ Admin/ops
 - Security/Privacy: Server-to-server OAuth via MSAL using existing app credentials. No additional scopes beyond `DYNAMICS_ORG_URL/.default`.
 - Rollout/Flags: Set `DYN_ORG_URL` to `https://eduvosce.crm4.dynamics.com`. Ensure the app registration has API permissions for Dataverse and that `edv_sponsoremail1` is readable for the application user.
 - Links: N/A
+
+- [2025-10-23] Deployment: auto-stash and ignore collected static
+  - Files changed
+    - `deploy.sh`, `.gitignore`
+  - Behavior impact
+    - `deploy.sh` now stashes local changes (including untracked like .pyc) before pulling to avoid merge failures.
+    - Git now ignores `static_build/` (collectstatic output) to keep build artifacts out of version control.
+  - Data model
+    - No changes.
+  - Integrations/Jobs
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - No changes.
+  - Rollout/Flags
+    - On existing clones, run: `git ls-files -ci --exclude-standard -z | xargs -0 git rm -r --cached --` then `git rm -r --cached static_build || true` and commit to stop tracking ignored files.
+  - Links
+    - N/A
