@@ -945,3 +945,21 @@ Admin/ops
     - On existing clones, run: `git ls-files -ci --exclude-standard -z | xargs -0 git rm -r --cached --` then `git rm -r --cached static_build || true` and commit to stop tracking ignored files.
   - Links
     - N/A
+
+- [2025-10-26] Allauth username-less signup config fix
+  - Files changed
+    - `config/settings.py`
+  - Behavior impact
+    - Fixes signup error: “User has no field named 'username'” when using custom user with `username=None`. Signup/login now use email-only.
+  - Data model
+    - No changes.
+  - Jobs/Integrations
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - No changes.
+  - Rollout/Flags
+    - Deploy and restart app service. Ensure allauth version supports `ACCOUNT_USER_MODEL_USERNAME_FIELD=None` and `ACCOUNT_USERNAME_REQUIRED=False`.
+  - Links
+    - N/A

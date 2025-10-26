@@ -5,7 +5,7 @@ set -Eeuo pipefail
 PROJECT_DIR="/opt/vossieparent"             # project root containing manage.py
 VENV_DIR="$PROJECT_DIR/.venv"               # python venv directory
 SERVICE_NAME="vossie.service"               # systemd unit name
-APP_PORT="8001"                             # Gunicorn bind port (127.0.0.1:8001)
+APP_PORT="8002"                             # Gunicorn bind port (127.0.0.1:8002)
 GIT_REMOTE="${GIT_REMOTE:-origin}"          # remote name
 GIT_BRANCH="${GIT_BRANCH:-main}"            # branch to deploy
 STATIC_ROOT="${STATIC_ROOT:-$PROJECT_DIR/static_build}"  # must match settings.py STATIC_ROOT
