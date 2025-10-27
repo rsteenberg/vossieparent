@@ -839,6 +839,26 @@ Admin/ops
 ---
 # Changelog
 
+- [2025-10-27] SendGrid email integration and admin error emails
+  - Files changed
+    - `config/settings.py`
+  - Behavior impact
+    - When `SENDGRID_API_KEY` is set, emails are sent via SendGrid using Anymail. In development without the key, emails go to the console backend.
+    - Server errors email `ADMINS` using `SERVER_EMAIL` as the sender via Django's `AdminEmailHandler`.
+  - Data model
+    - No changes.
+  - Jobs/Integrations
+    - Uses `django-anymail` for ESP abstraction; SendGrid webhooks are exposed at `/webhooks/email/sendgrid/` (already included via `anymail.urls`).
+  - Emails/Templates
+    - `DEFAULT_FROM_EMAIL` and `SERVER_EMAIL` are read from environment variables.
+  - Security/Privacy
+    - Secrets are pulled from environment (`SENDGRID_API_KEY`); ensure API keys are not committed.
+  - Rollout/Flags
+    - Set env vars: `SENDGRID_API_KEY`, `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `ADMIN_EMAILS`, `ADMIN_NAME`.
+    - Optional: configure SendGrid Event Webhook to POST to `${SITE_URL}/webhooks/email/sendgrid/` for delivery/bounce/complaint tracking.
+  - Links
+    - N/A
+
 - [2025-10-23] Deployment script (server automation)
   - Files changed
     - `deploy.sh`

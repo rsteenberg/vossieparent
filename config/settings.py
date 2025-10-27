@@ -118,8 +118,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # RQ queues
 RQ_QUEUES = {
-    "default": {"HOST": "localhost", "PORT": 6379, "DB": 0, "DEFAULT_TIMEOUT": 600},
-    "mail": {"HOST": "localhost", "PORT": 6379, "DB": 0, "DEFAULT_TIMEOUT": 600},
+    "default": {
+        "HOST": "localhost",
+        "PORT": 6379,
+        "DB": 0,
+        "DEFAULT_TIMEOUT": 600,
+    },
+    "mail": {
+        "HOST": "localhost",
+        "PORT": 6379,
+        "DB": 0,
+        "DEFAULT_TIMEOUT": 600,
+    },
 }
 
 # Email backend (Anymail if configured; fallback to console for dev)
@@ -129,7 +139,17 @@ if SENDGRID_API_KEY:
     EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "School <no-reply@school.example>")
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", "School <no-reply@school.example>"
+)
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+_admin_emails = os.environ.get("ADMIN_EMAILS", "")
+_admin_name = os.environ.get("ADMIN_NAME", "Admin")
+ADMINS = [
+    (_admin_name, e.strip())
+    for e in _admin_emails.split(",")
+    if e.strip()
+]
 
 # Dynamics / Dataverse (server-to-server)
 DYNAMICS_TENANT_ID = os.environ.get("DYN_TENANT_ID", "")
@@ -139,7 +159,32 @@ DYNAMICS_ORG_URL = os.environ.get("DYN_ORG_URL", "")
 DYNAMICS_SCOPE = f"{DYNAMICS_ORG_URL}/.default" if DYNAMICS_ORG_URL else ""
 
 # Identity lease
-IDENTITY_LEASE_TTL_SECONDS = int(os.environ.get("IDENTITY_LEASE_TTL_SECONDS", "3600"))
+IDENTITY_LEASE_TTL_SECONDS = int(
+    os.environ.get("IDENTITY_LEASE_TTL_SECONDS", "3600")
+)
 
 # Site URL for building absolute links
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+        },
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["mail_admins"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+        "django.security": {
+            "handlers": ["mail_admins"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+    },
+}
