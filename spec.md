@@ -839,6 +839,28 @@ Admin/ops
 ---
 # Changelog
 
+- [2025-10-27] Automatic .env loading (python-dotenv)
+  - Files changed
+    - `requirements.txt`
+    - `manage.py`
+    - `config/wsgi.py`
+    - `config/asgi.py`
+  - Behavior impact
+    - A `.env` file at the project root is automatically loaded for CLI (`manage.py`) and server processes (WSGI/ASGI). Environment variables like `SENDGRID_API_KEY`, `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `ADMIN_EMAILS`, etc., are now read consistently on startup.
+  - Data model
+    - No changes.
+  - Jobs/Integrations
+    - None.
+  - Emails/Templates
+    - No changes; ensures SendGrid config is read without relying on OS shell env.
+  - Security/Privacy
+    - `.env` remains gitignored; store secrets only in `.env` or systemd Environment files. Restrict file permissions on production.
+  - Rollout/Flags
+    - `pip install -r requirements.txt` to install `python-dotenv`.
+    - Place `.env` at project root (e.g., `/opt/vossieparent/.env` in production) and restart the service.
+  - Links
+    - N/A
+
 - [2025-10-27] SendGrid email integration and admin error emails
   - Files changed
     - `config/settings.py`

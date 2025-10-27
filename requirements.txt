@@ -8,4 +8,4 @@ msal
 argon2-cffi
 django-axes
 redis
-
+python-dotenv
