@@ -839,6 +839,55 @@ Admin/ops
 ---
 # Changelog
 
+- [2025-10-27] PostgreSQL database config via .env + lockout page
+  - Files changed
+    - `config/settings.py`
+    - `requirements.txt`
+    - `templates/account/lockout.html`
+  - Behavior impact
+    - When `.env` defines `DB_NAME`, the app uses PostgreSQL with the provided `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, and `DB_SSLMODE`. When absent, it falls back to SQLite.
+    - Locked-out users now see a friendly lockout screen instead of a plain response.
+  - Data model
+    - No model changes. Migrations apply to create/update third-party tables (Axes) in the new database.
+  - Integrations/Jobs
+    - None.
+  - Emails/Templates
+    - New template `account/lockout.html` for lockout page.
+  - Security/Privacy
+    - DB credentials are sourced from `.env`. TLS is configurable via `DB_SSLMODE`.
+  - Rollout/Flags
+    - Install dependencies: `psycopg2-binary`.
+    - Ensure PostgreSQL is running and credentials are set in `.env`.
+    - Run `python manage.py migrate` against the PostgreSQL database.
+  - Links
+    - N/A
+
+- [2025-10-27] Login security hardening (Axes, rate limits, validators, session cookies)
+  - Files changed
+    - `config/settings.py`
+  - Behavior impact
+    - Brute-force protection: 5 failed login attempts lock the account for 15 minutes (HTTP 429 on further attempts).
+    - Login rate limiting via allauth: `login` (10/min/IP) and `login_failed` (5/10min/email).
+    - Remember-me respected: sessions persist up to 14 days when selected; otherwise expire on browser close.
+    - Explicit auth redirects (`LOGIN_URL`, `LOGOUT_REDIRECT_URL`) for consistency.
+    - Secure cookies in production: `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` when `DEBUG=False`; `SameSite=Lax`.
+  - Data model
+    - Third-party app `django-axes` adds its own tables (migration: yes).
+  - Jobs/Integrations
+    - None.
+  - Emails/Templates
+    - None.
+  - Security/Privacy
+    - Axes lockouts + allauth rate limits reduce credential stuffing and brute-force risk.
+    - Password validators enforce minimum complexity.
+    - Session cookie security tightened in production.
+  - Rollout/Flags
+    - Run DB migrations to create Axes tables: `python manage.py migrate`.
+    - If behind a reverse proxy, configure Axes/IPWare proxy settings (`AXES_IPWARE_PROXY_*`) accordingly.
+    - No feature flags.
+  - Links
+    - N/A
+
 - [2025-10-27] Automatic .env loading (python-dotenv)
   - Files changed
     - `requirements.txt`

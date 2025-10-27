@@ -9,3 +9,4 @@ argon2-cffi
 django-axes
 redis
 python-dotenv
+psycopg2-binary
