@@ -80,8 +80,9 @@ def change_email(request):
         new_email_token=token2,
         expires_at=timezone.now() + timedelta(days=1),
     )
-    old_link = request.build_absolute_uri(reverse("accounts:confirm_old") + f"?t={token1}")
-    new_link = request.build_absolute_uri(reverse("accounts:confirm_new") + f"?t={token2}")
+    base = settings.SITE_URL.rstrip("/")
+    old_link = f"{base}{reverse('accounts:confirm_old')}?t={token1}"
+    new_link = f"{base}{reverse('accounts:confirm_new')}?t={token2}"
     send_mail("Approve email change", f"Approve change: {old_link}", settings.DEFAULT_FROM_EMAIL, [request.user.email])
     send_mail("Verify new email", f"Verify address: {new_link}", settings.DEFAULT_FROM_EMAIL, [new_email])
     return HttpResponse("Change email initiated")

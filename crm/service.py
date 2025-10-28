@@ -24,34 +24,76 @@ def validate_parent(user: User) -> bool:
         )
         values = res.get("value", [])
         contact = values[0] if values else None
-    if not contact:
-        return False
-    links = dyn_get(
-        "new_parentstudentlinks",
-        params={
-            "$filter": f"_parentid_value eq {contact['contactid']} and statecode eq 0",
-        },
-    )
     active_students = []
-    for row in links.get("value", []):
-        external_student_id = row.get("_studentid_value")
-        if not external_student_id:
-            continue
-        st, _ = Student.objects.get_or_create(
-            external_student_id=external_student_id
+    if contact:
+        links = dyn_get(
+            "new_parentstudentlinks",
+            params={
+                "$filter": (
+                    f"_parentid_value eq {contact['contactid']} "
+                    "and statecode eq 0"
+                ),
+            },
         )
-        ParentStudentLink.objects.update_or_create(
-            user=user,
-            student=st,
-            defaults={"active": True, "last_verified_at": timezone.now()},
-        )
-        active_students.append(st.id)
-    ParentStudentLink.objects.filter(user=user).exclude(
-        student_id__in=active_students
-    ).update(active=False)
-    user.external_parent_id = contact["contactid"]
-    user.last_validated_at = timezone.now()
-    user.save(update_fields=["external_parent_id", "last_validated_at"])
+        for row in links.get("value", []):
+            external_student_id = row.get("_studentid_value")
+            if not external_student_id:
+                continue
+            st, _ = Student.objects.get_or_create(
+                external_student_id=external_student_id,
+                defaults={"first_name": "", "last_name": ""},
+            )
+            try:
+                stu = dyn_get(
+                    f"contacts({external_student_id})",
+                    params={"$select": "contactid,firstname,lastname"},
+                )
+                first = stu.get("firstname") or ""
+                last = stu.get("lastname") or ""
+                if (first and st.first_name != first) or (last and st.last_name != last):
+                    st.first_name = first
+                    st.last_name = last
+                    st.save(update_fields=["first_name", "last_name"])
+            except Exception:
+                pass
+            ParentStudentLink.objects.update_or_create(
+                user=user,
+                student=st,
+                defaults={"active": True, "last_verified_at": timezone.now()},
+            )
+            active_students.append(st.id)
+    if not active_students:
+        contacts = get_contacts_by_sponsor1_email(user.email)
+        for c in contacts:
+            sid = c.get("contactid")
+            if not sid:
+                continue
+            st, _ = Student.objects.get_or_create(
+                external_student_id=sid,
+                defaults={"first_name": "", "last_name": ""},
+            )
+            first = c.get("firstname") or ""
+            last = c.get("lastname") or ""
+            if (first and st.first_name != first) or (last and st.last_name != last):
+                st.first_name = first
+                st.last_name = last
+                st.save(update_fields=["first_name", "last_name"])
+            ParentStudentLink.objects.update_or_create(
+                user=user,
+                student=st,
+                defaults={"active": True, "last_verified_at": timezone.now()},
+            )
+            active_students.append(st.id)
+    if active_students:
+        ParentStudentLink.objects.filter(user=user).exclude(
+            student_id__in=active_students
+        ).update(active=False)
+        update_fields = ["last_validated_at"]
+        if contact and contact.get("contactid") and user.external_parent_id != contact["contactid"]:
+            user.external_parent_id = contact["contactid"]
+            update_fields.append("external_parent_id")
+        user.last_validated_at = timezone.now()
+        user.save(update_fields=update_fields)
     return bool(active_students)
 
 
@@ -62,7 +104,10 @@ def get_contacts_by_sponsor1_email(email):
     res = dyn_get(
         "contacts",
         params={
-            "$select": "contactid,fullname,emailaddress1,edv_sponsoremail1",
+            "$select": (
+                "contactid,firstname,lastname,fullname," \
+                "emailaddress1,edv_sponsoremail1"
+            ),
             "$filter": f"edv_sponsoremail1 eq '{safe_email}'",
         },
     )

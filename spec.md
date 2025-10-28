@@ -839,6 +839,65 @@ Admin/ops
 ---
 # Changelog
 
+- [2025-10-28] Confirmation links use application URL (SITE_URL)
+  - Files changed
+    - `accounts/views.py`
+  - Behavior impact
+    - Email change confirmation links now use the configured application URL from `SITE_URL` instead of deriving from the incoming request. This ensures correct host in emails behind proxies/CDNs or when triggered from background jobs.
+  - Data model
+    - None.
+  - Integrations/Jobs
+    - None.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - Reduces risk of incorrect domain leakage when requests originate through alternate hosts.
+  - Rollout/Flags
+    - Set `SITE_URL` in `.env` (e.g., `https://parents.eduvos.com`).
+  - Links
+    - N/A
+
+- [2025-10-28] Students listing via Dynamics sponsor + MSAL authority fix
+  - Files changed
+    - `crm/msal_client.py`, `crm/service.py`
+  - Behavior impact
+    - Parents visiting the Students page now see all active linked students fetched from Dataverse via server-to-server OAuth.
+    - If explicit parent↔student link rows are found in Dataverse (`new_parentstudentlinks`), those are used.
+    - If no explicit links are found, the system falls back to students whose `edv_sponsoremail1` equals the parent’s email (Sponsor 1 Email), linking them locally.
+    - Student first/last names are refreshed from Dataverse contacts when available.
+  - Data model
+    - No changes. Existing `Student` and `ParentStudentLink` are used.
+  - Integrations/Jobs
+    - Dataverse Web API queries: `contacts` and `new_parentstudentlinks`.
+    - MSAL authority now uses configured tenant ID (`DYN_TENANT_ID`).
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - Server-to-server OAuth using application user; no secrets in client.
+    - Identity lease TTL governs revalidation frequency.
+  - Rollout/Flags
+    - Set env vars: `DYN_TENANT_ID`, `DYN_CLIENT_ID`, `DYN_CLIENT_SECRET`, `DYN_ORG_URL`.
+    - Ensure the application user in Dataverse has read access to `contacts` and the custom link table.
+    - Deploy and restart service.
+  - Links
+    - N/A
+
+- [2025-10-28] Dynamics client helpers (POST/PATCH/DELETE, annotations)
+  - Files changed
+    - `crm/msal_client.py`
+  - Behavior impact
+    - No spec impact. Adds helper methods `dyn_post`, `dyn_patch`, `dyn_delete` and optional annotations flag to `dyn_get` for Dataverse API usage.
+  - Data model
+    - None.
+  - Integrations/Jobs
+    - Reuses existing MSAL client credentials and shared token cache; consistent with `DYNAMICS_*` settings.
+  - Emails/Templates
+    - None.
+  - Security/Privacy
+    - No changes. Still server-to-server OAuth with app registration.
+  - Rollout/Flags
+    - None.
+
 - [2025-10-27] PostgreSQL database config via .env + lockout page
   - Files changed
     - `config/settings.py`
