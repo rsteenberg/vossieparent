@@ -4,9 +4,26 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def env_bool(name, default=False):
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in ("1", "true", "yes", "on")
+
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
-DEBUG = os.environ.get("DEBUG", "1") == "1"
-ALLOWED_HOSTS = ["*"]
+DEBUG = env_bool("DEBUG", True)
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("ALLOWED_HOSTS", "*").split(",")
+    if h.strip()
+]
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -54,12 +71,10 @@ LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "account_login"
 LOGOUT_REDIRECT_URL = "/"
 ACCOUNT_FORMS = {"signup": "accounts.forms.SignupForm"}
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_SESSION_REMEMBER = None
-
+ACCOUNT_ADAPTER = "accounts.adapter.DevAccountAdapter"
 ACCOUNT_RATE_LIMITS = {
     "login": "10/m/ip",
     "login_failed": "5/10m/key",
@@ -171,7 +186,7 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "static_build"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -181,6 +196,16 @@ SESSION_COOKIE_SAMESITE = "Lax"
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
+_hsts = os.environ.get("SECURE_HSTS_SECONDS")
+SECURE_HSTS_SECONDS = int(_hsts) if (_hsts and _hsts.isdigit()) else 0
+if env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False):
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+if env_bool("SECURE_HSTS_PRELOAD", False):
+    SECURE_HSTS_PRELOAD = True
+if env_bool("USE_X_FORWARDED_PROTO", False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 RQ_QUEUES = {
     "default": {
@@ -201,6 +226,13 @@ RQ_QUEUES = {
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 if SENDGRID_API_KEY:
     ANYMAIL = {"SENDGRID_API_KEY": SENDGRID_API_KEY}
+    _sg_webhook_key = os.environ.get(
+        "SENDGRID_TRACKING_WEBHOOK_VERIFICATION_KEY"
+    )
+    if _sg_webhook_key:
+        ANYMAIL[
+            "SENDGRID_TRACKING_WEBHOOK_VERIFICATION_KEY"
+        ] = _sg_webhook_key
     EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
@@ -230,6 +262,8 @@ IDENTITY_LEASE_TTL_SECONDS = int(
 
 # Site URL for building absolute links
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
+if SITE_URL.startswith("http://localhost:8000"):
+    ACCOUNT_EMAIL_VERIFICATION = "none"
 
 LOGGING = {
     "version": 1,
@@ -258,6 +292,6 @@ AXES_ENABLED = True
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_LOCK_OUT_AT_FAILURE = True
-AXES_LOCK_OUT_BY_USER_OR_IP = True
+AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_TEMPLATE = "account/lockout.html"

@@ -1107,9 +1107,71 @@ Admin/ops
     - No changes.
   - Emails/Templates
     - No changes.
-  - Security/Privacy
     - No changes.
   - Rollout/Flags
     - Deploy and restart app service. Ensure allauth version supports `ACCOUNT_USER_MODEL_USERNAME_FIELD=None` and `ACCOUNT_USERNAME_REQUIRED=False`.
   - Links
     - N/A
+
+- [2025-10-28] Dev: static file serving fix
+  - Files changed
+    - `config/settings.py`
+  - Behavior impact
+    - No spec impact. Local development now serves static assets reliably (DEBUG parsing tolerant of True/1/etc.; STATIC_URL absolute).
+  - Data model
+    - No changes.
+  - Jobs/Integrations
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - No changes.
+  - Rollout/Flags
+    - Set `DEBUG=1` (or `True`) in `.env`; restart dev server to apply.
+
+- [2025-10-28] Dev: Auto-verify email on localhost
+  - Files changed
+    - `config/settings.py`, `accounts/adapter.py`, `accounts/signals.py`
+  - Behavior impact
+    - When `SITE_URL` starts with `http://localhost:8000`, allauth email verification is disabled and the user's primary `EmailAddress` is marked verified on login. Signup/login flows no longer require email confirmation locally. No effect in non-local environments.
+  - Data model
+    - No changes.
+  - Integrations/Jobs
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - Dev-only safeguard via `SITE_URL` check. Ensure `SITE_URL` is never set to localhost in staging/production.
+  - Rollout/Flags
+    - For local dev, set `SITE_URL=http://localhost:8000` in `.env` and restart server.
+  - Links
+    - N/A
+
+- [2025-10-28] Security hardening + Allauth/Axes deprecations + SendGrid webhook verification
+  - Files changed
+    - `config/settings.py`
+  - Behavior impact
+    - Removes allauth deprecated settings in favor of `ACCOUNT_LOGIN_METHODS` and `ACCOUNT_SIGNUP_FIELDS`.
+    - Adds env-driven security toggles: `SECURE_SSL_REDIRECT`, HSTS (`SECURE_HSTS_SECONDS`, include-subdomains, preload), `SECURE_PROXY_SSL_HEADER` via `USE_X_FORWARDED_PROTO`.
+    - Parses `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` from env; production links/emails should reflect `SITE_URL`.
+    - Configures Anymail SendGrid tracking webhook signature verification via `SENDGRID_TRACKING_WEBHOOK_VERIFICATION_KEY`.
+    - Replaces deprecated `AXES_LOCK_OUT_BY_USER_OR_IP` with `AXES_LOCKOUT_PARAMETERS`.
+  - Data model
+    - No changes.
+  - Integrations/Jobs
+    - SendGrid Event Webhook must be pointed to `/webhooks/email/sendgrid/tracking/` and have "Signed Events" enabled. Set env `SENDGRID_TRACKING_WEBHOOK_VERIFICATION_KEY` to the Base64 public key from SendGrid.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - Enables HTTPS enforcement/HSTS when env flags are set; encourages strong `SECRET_KEY` from env; verifies SendGrid webhook signatures.
+  - Rollout/Flags
+    - On production `.env`, set:
+      - `DEBUG=0`
+      - `ALLOWED_HOSTS=<your_domain>,localhost`
+      - `CSRF_TRUSTED_ORIGINS=https://<your_domain>`
+      - `SITE_URL=https://<your_domain>`
+      - `SECURE_SSL_REDIRECT=1`, `SECURE_HSTS_SECONDS=31536000`, `SECURE_HSTS_INCLUDE_SUBDOMAINS=1`, `SECURE_HSTS_PRELOAD=1`
+      - `USE_X_FORWARDED_PROTO=1` (if behind TLS-terminating proxy)
+      - `SECRET_KEY=<strong_random_64+ chars>`
+      - `SENDGRID_API_KEY=<existing>` and `SENDGRID_TRACKING_WEBHOOK_VERIFICATION_KEY=<from SendGrid>`
+    - Redeploy and verify `/accounts/login/` and webhook health.
