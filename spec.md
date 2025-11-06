@@ -205,6 +205,16 @@ class EmailEvent(models.Model):
 
 5) Identity lease: login‑time validation against Dynamics
 
+[2025-10-30] Dynamics token failure handling (no login crash)
+- Files: `crm/msal_client.py`, `crm/service.py`
+- Behavior impact: If Dataverse/MSAL auth fails (e.g., invalid client secret), login proceeds without crashing; CRM validation is skipped for that request.
+- Data model: none (migration: no)
+- Integrations/Jobs: MSAL token acquisition now raises a specific exception; service layer swallows failures and returns False.
+- Emails/Templates: none
+- Security/Privacy: No secrets logged; guidance to rotate/fix client secret in Azure AD.
+- Rollout/Flags: No flags. Deploy and ensure environment secret is valid.
+- Links: 
+
 Flow
 
 Parent logs in (local Django credentials).
