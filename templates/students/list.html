@@ -15,5 +15,24 @@
   {% else %}
     <div class="muted">No linked students found.</div>
   {% endif %}
+  {% if demo_contact %}
+    <div class="card mt-3">
+      <div class="section-title">Contact (Dynamics)</div>
+      <div><strong>Full name:</strong> {{ demo_contact.fullname|default:demo_contact.firstname|add:' '|add:demo_contact.lastname }}</div>
+      <div><strong>First name:</strong> {{ demo_contact.firstname }}</div>
+      <div><strong>Last name:</strong> {{ demo_contact.lastname }}</div>
+      <div><strong>Email:</strong> {{ demo_contact.emailaddress1 }}</div>
+      {% if demo_contact.edv_sponsoremail1 %}
+        <div><strong>Sponsor Email 1:</strong> {{ demo_contact.edv_sponsoremail1 }}</div>
+      {% endif %}
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.5rem">Contact ID: {{ demo_contact.contactid }}</div>
+    </div>
+  {% endif %}
+  {% if not demo_contact and demo_contact_status.status %}
+    <div class="card mt-3 alert info">
+      <div class="section-title">Dynamics contact not shown</div>
+      <div>{{ demo_contact_status.message }}</div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

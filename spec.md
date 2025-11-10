@@ -1203,3 +1203,40 @@ Admin/ops
     - No flags. Deploy and verify that `/terms/` and `/privacy/` load and footer links are visible.
   - Links
     - N/A
+
+- [2025-11-10] UI: Header and footer layout polish (no spec impact)
+  - Files changed
+    - `templates/base.html`, `static/css/app.css`
+  - Behavior impact
+    - Brand now links to home; a Home button is shown next to Logout when authenticated.
+    - Sticky header with subtle shadow; footer spacing and visibility improved; responsive tweaks (hide search on narrow screens).
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - No changes.
+  - Rollout/Flags
+    - No flags. Clear static cache if needed and reload.
+  - Links
+    - N/A
+
+- [2025-11-10] Students: Load CRM contact details on list page (demo)
+  - Files changed
+    - `crm/service.py`, `students/views.py`, `templates/students/list.html`
+  - Behavior impact
+    - The Students page fetches and displays basic details for contact `16b7f729-473c-ee11-bdf4-000d3adf7716` from Dynamics as a demo block (fullname, first/last, email, sponsor email 1, contact id).
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - Uses existing MSAL/Dynamics client (`dyn_get`). If `DYNAMICS_ORG_URL` is unset or the request fails, the page still loads and omits the block.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - No sensitive data persisted; read-only call. Ensure proper permissions on the Dynamics app registration.
+  - Rollout/Flags
+    - No flags. To disable, remove the block in `students/views.py` and template.
+  - Links
+    - N/A

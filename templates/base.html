@@ -17,7 +17,7 @@
       <div>
         <button class="btn lang">English ▾</button>
       </div>
-      <div class="hstack">
+      <div class="hstack actions">
         {% if user.is_authenticated %}
           <a class="tab" href="{% url 'home' %}">Home</a>
           <a class="tab" href="{% url 'account_logout' %}">Logout</a>

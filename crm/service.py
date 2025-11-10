@@ -135,3 +135,29 @@ def get_contacts_by_sponsor1_email(email):
 
 def is_user_sponsor1_email(user: User) -> bool:
     return bool(get_contacts_by_sponsor1_email(user.email))
+
+
+def get_contact_by_id(contact_id: str):
+    """Fetch a single Dataverse contact by id.
+
+    Returns dict or None. Selects commonly needed fields.
+    Gracefully returns None if Dynamics isn't configured or call fails.
+    """
+    from django.conf import settings
+
+    if not settings.DYNAMICS_ORG_URL or not contact_id:
+        return None
+    try:
+        contact = dyn_get(
+            f"contacts({contact_id})",
+            params={
+                "$select": (
+                    "contactid,firstname,lastname,fullname,"  # names
+                    "emailaddress1,edv_sponsoremail1"  # email fields
+                )
+            },
+            include_annotations=True,  # get formatted values if needed later
+        )
+        return contact or None
+    except Exception:
+        return None
