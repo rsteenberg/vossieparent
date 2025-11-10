@@ -1,9 +1,14 @@
 import os
+from dotenv import load_dotenv
 from urllib.parse import urlparse
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env for local development
+# In production, prefer real environment variables (systemd, container, etc.)
+load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(name, default=False):
@@ -255,6 +260,13 @@ DYNAMICS_CLIENT_ID = os.environ.get("DYN_CLIENT_ID", "")
 DYNAMICS_CLIENT_SECRET = os.environ.get("DYN_CLIENT_SECRET", "")
 DYNAMICS_ORG_URL = os.environ.get("DYN_ORG_URL", "")
 DYNAMICS_SCOPE = f"{DYNAMICS_ORG_URL}/.default" if DYNAMICS_ORG_URL else ""
+DYNAMICS_PARENT_STUDENT_LINK_TABLE = os.environ.get(
+    "DYN_PARENT_STUDENT_LINK_TABLE", ""
+)
+# Field (column logical name) on student Contact records that stores the sponsor/parent email
+DYNAMICS_SPONSOR1_EMAIL_FIELD = os.environ.get(
+    "DYN_SPONSOR1_EMAIL_FIELD", "btfh_sponsor1email"
+)
 
 # Identity lease
 IDENTITY_LEASE_TTL_SECONDS = int(

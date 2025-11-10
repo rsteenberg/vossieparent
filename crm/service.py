@@ -32,48 +32,53 @@ def validate_parent(user: User) -> bool:
             contact = None
     active_students = []
     if contact:
-        try:
-            links = dyn_get(
-                "new_parentstudentlinks",
-                params={
-                    "$filter": (
-                        f"_parentid_value eq {contact['contactid']} "
-                        "and statecode eq 0"
-                    ),
-                },
-            )
-        except Exception:
-            links = {"value": []}
-        for row in links.get("value", []):
-            external_student_id = row.get("_studentid_value")
-            if not external_student_id:
-                continue
-            st, _ = Student.objects.get_or_create(
-                external_student_id=external_student_id,
-                defaults={"first_name": "", "last_name": ""},
-            )
+        # No link table: find students by sponsor email field on Contact
+        sponsor_field = getattr(
+            settings, "DYNAMICS_SPONSOR1_EMAIL_FIELD", "btfh_sponsor1email"
+        )
+        parent_email = (contact.get("emailaddress1") or "").strip()
+        if parent_email:
+            safe_parent_email = parent_email.replace("'", "''")
             try:
-                stu = dyn_get(
-                    f"contacts({external_student_id})",
-                    params={"$select": "contactid,firstname,lastname"},
+                res = dyn_get(
+                    "contacts",
+                    params={
+                        "$select": "contactid,firstname,lastname",
+                        "$filter": (
+                            f"{sponsor_field} ne null and {sponsor_field} ne '' and "
+                            f"{sponsor_field} eq '{safe_parent_email}'"
+                        ),
+                        "$top": 100,
+                    },
                 )
-                first = stu.get("firstname") or ""
-                last = stu.get("lastname") or ""
-                if (
-                    (first and st.first_name != first)
-                    or (last and st.last_name != last)
-                ):
-                    st.first_name = first
-                    st.last_name = last
-                    st.save(update_fields=["first_name", "last_name"])
+                for row in res.get("value", []):
+                    external_student_id = row.get("contactid")
+                    if not external_student_id:
+                        continue
+                    st, _ = Student.objects.get_or_create(
+                        external_student_id=external_student_id,
+                        defaults={"first_name": "", "last_name": ""},
+                    )
+                    first = row.get("firstname") or ""
+                    last = row.get("lastname") or ""
+                    if (
+                        (first and st.first_name != first)
+                        or (last and st.last_name != last)
+                    ):
+                        st.first_name = first
+                        st.last_name = last
+                        st.save(update_fields=["first_name", "last_name"])
+                    ParentStudentLink.objects.update_or_create(
+                        user=user,
+                        student=st,
+                        defaults={
+                            "active": True,
+                            "last_verified_at": timezone.now(),
+                        },
+                    )
+                    active_students.append(st.id)
             except Exception:
                 pass
-            ParentStudentLink.objects.update_or_create(
-                user=user,
-                student=st,
-                defaults={"active": True, "last_verified_at": timezone.now()},
-            )
-            active_students.append(st.id)
     if not active_students:
         contacts = get_contacts_by_sponsor1_email(user.email)
         for c in contacts:
@@ -119,6 +124,9 @@ def validate_parent(user: User) -> bool:
 def get_contacts_by_sponsor1_email(email):
     if not settings.DYNAMICS_ORG_URL or not email:
         return []
+    sponsor_field = getattr(
+        settings, "DYNAMICS_SPONSOR1_EMAIL_FIELD", "btfh_sponsor1email"
+    )
     safe_email = email.replace("'", "''")
     try:
         res = dyn_get(
@@ -126,9 +134,9 @@ def get_contacts_by_sponsor1_email(email):
             params={
                 "$select": (
                     "contactid,firstname,lastname,fullname,"
-                    "emailaddress1,edv_sponsoremail1"
+                    "emailaddress1"
                 ),
-                "$filter": f"edv_sponsoremail1 eq '{safe_email}'",
+                "$filter": f"{sponsor_field} eq '{safe_email}'",
             },
         )
         return res.get("value", [])
@@ -161,7 +169,7 @@ def get_contact_by_id(contact_id: str):
             params={
                 "$select": (
                     "contactid,firstname,lastname,fullname,"  # names
-                    "emailaddress1,edv_sponsoremail1"  # email fields
+                    "emailaddress1"  # built-in email field only (custom optional)
                 )
             },
             include_annotations=True,
