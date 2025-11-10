@@ -49,5 +49,14 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>&copy; {% now "Y" %} Eduvos</span>
+      <span class="spacer">·</span>
+      <a href="{% url 'content:terms' %}">Terms of Service</a>
+      <span class="spacer">·</span>
+      <a href="{% url 'content:privacy' %}">Privacy Policy</a>
+    </div>
+  </footer>
 </body>
 </html>

@@ -1185,3 +1185,21 @@ Admin/ops
       - `SECRET_KEY=<strong_random_64+ chars>`
       - `SENDGRID_API_KEY=<existing>` and `SENDGRID_TRACKING_WEBHOOK_VERIFICATION_KEY=<from SendGrid>`
     - Redeploy and verify `/accounts/login/` and webhook health.
+
+- [2025-11-10] Legal: Terms of Service and Privacy pages
+  - Files changed
+    - `content/views.py`, `content/urls.py`, `templates/base.html`, `templates/content/terms.html`, `templates/content/privacy.html`
+  - Behavior impact
+    - Adds two public pages: Terms of Service (`/terms/`) and Privacy Policy (`/privacy/`). Footer now includes links to both pages on all views.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - No changes.
+  - Emails/Templates
+    - New templates: `templates/content/terms.html`, `templates/content/privacy.html`.
+  - Security/Privacy
+    - Improves transparency by surfacing privacy policy; pages are publicly accessible without authentication.
+  - Rollout/Flags
+    - No flags. Deploy and verify that `/terms/` and `/privacy/` load and footer links are visible.
+  - Links
+    - N/A

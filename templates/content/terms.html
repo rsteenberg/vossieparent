@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block page_title %}Terms of Service · Eduvos Parent Portal{% endblock %}
+
+{% block content %}
+<section class="page page-legal">
+  <h1>Terms of Service</h1>
+  <p>Last updated: 10 November 2025</p>
+  <hr/>
+  <h2>1. Acceptance of terms</h2>
+  <p>By accessing or using this portal, you agree to these Terms of Service. If you do not agree, do not use the portal.</p>
+
+  <h2>2. Eligibility and access</h2>
+  <p>This portal is provided to parents/guardians for access to student information. You are responsible for maintaining the confidentiality of your account.</p>
+
+  <h2>3. Permitted use</h2>
+  <p>You agree not to misuse the portal, attempt to breach security, or access data you are not authorized to view.</p>
+
+  <h2>4. Privacy</h2>
+  <p>Your use of the portal is also governed by our <a href="{% url 'content:privacy' %}">Privacy Policy</a>.</p>
+
+  <h2>5. Changes</h2>
+  <p>We may update these terms from time to time. Material changes will be communicated where appropriate.</p>
+
+  <h2>6. Contact</h2>
+  <p>If you have questions about these terms, please contact support.</p>
+</section>
+{% endblock %}

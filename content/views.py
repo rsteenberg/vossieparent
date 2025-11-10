@@ -7,6 +7,8 @@ from .services import get_notice_buckets_for_user
 from students.models import ParentStudentLink
 from academics.models import Enrollment
 
+from django.views.decorators.http import require_GET
+
 
 def _user_can_view_announcement(user, ann: Announcement) -> bool:
     if ann.audience == "ALL":
@@ -75,3 +77,15 @@ def announcement_detail(request, pk: int):
         "content/announcement_detail.html",
         {"ann": ann, "active_nav": "announcements"},
     )
+
+
+@require_GET
+def terms(request):
+    """Public Terms of Service page (no auth required)."""
+    return render(request, "content/terms.html", {"active_nav": None})
+
+
+@require_GET
+def privacy(request):
+    """Public Privacy Policy page (no auth required)."""
+    return render(request, "content/privacy.html", {"active_nav": None})
