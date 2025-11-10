@@ -206,6 +206,16 @@ class EmailEvent(models.Model):
 5) Identity lease: login‑time validation against Dynamics
 
 [2025-10-30] Dynamics token failure handling (no login crash)
+[2025-11-10] Dynamics contact diagnostics & logging
+- Files: `crm/msal_client.py`, `crm/service.py`, `jobs/management/commands/test_dynamics_contact.py`
+- Behavior impact: Adds clearer error logging for token/config and HTTP failures; provides a management command to diagnose why a contact cannot be retrieved (auth, 404, permissions, configuration). Normal user-visible behavior unchanged except easier ops troubleshooting.
+- Data model: none (migration: no)
+- Integrations/Jobs: new management command `test_dynamics_contact` for on-demand CRM checks.
+- Emails/Templates: none
+- Security/Privacy: Logs exclude secrets; only status codes and truncated response bodies (<=500 chars). Safe error surfaces for admins.
+- Rollout/Flags: Run `python manage.py test_dynamics_contact --id <guid>` in production to verify CRM connectivity; no flag.
+- Links: 
+
 - Files: `crm/msal_client.py`, `crm/service.py`
 - Behavior impact: If Dataverse/MSAL auth fails (e.g., invalid client secret), login proceeds without crashing; CRM validation is skipped for that request.
 - Data model: none (migration: no)

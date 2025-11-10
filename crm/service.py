@@ -3,6 +3,9 @@ from django.conf import settings
 from accounts.models import User
 from students.models import Student, ParentStudentLink
 from .msal_client import dyn_get
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def validate_parent(user: User) -> bool:
@@ -142,10 +145,15 @@ def get_contact_by_id(contact_id: str):
 
     Returns dict or None. Selects commonly needed fields.
     Gracefully returns None if Dynamics isn't configured or call fails.
+    Adds debug logging for failure cases to aid troubleshooting.
     """
     from django.conf import settings
 
-    if not settings.DYNAMICS_ORG_URL or not contact_id:
+    if not settings.DYNAMICS_ORG_URL:
+        logger.debug("get_contact_by_id skipped: DYNAMICS_ORG_URL not set")
+        return None
+    if not contact_id:
+        logger.debug("get_contact_by_id skipped: empty contact_id")
         return None
     try:
         contact = dyn_get(
@@ -156,8 +164,13 @@ def get_contact_by_id(contact_id: str):
                     "emailaddress1,edv_sponsoremail1"  # email fields
                 )
             },
-            include_annotations=True,  # get formatted values if needed later
+            include_annotations=True,
         )
+        if not contact:
+            logger.info("Dynamics contact %s returned empty payload", contact_id)
         return contact or None
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Failed to fetch Dynamics contact %s: %s", contact_id, str(e)
+        )
         return None
