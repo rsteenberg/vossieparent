@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 from pathlib import Path
 from datetime import timedelta
 
@@ -264,6 +265,20 @@ IDENTITY_LEASE_TTL_SECONDS = int(
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
 if SITE_URL.startswith("http://localhost:8000"):
     ACCOUNT_EMAIL_VERIFICATION = "none"
+
+# Ensure SITE_URL host/origin are whitelisted even if env lists are missing
+try:
+    _parsed_site = urlparse(SITE_URL)
+    _site_host = _parsed_site.hostname
+    _site_origin = f"{_parsed_site.scheme}://{_parsed_site.hostname}"
+    if _parsed_site.port and _parsed_site.port not in (80, 443):
+        _site_origin = f"{_parsed_site.scheme}://{_parsed_site.hostname}:{_parsed_site.port}"
+    if _site_host and _site_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_site_host)
+    if _parsed_site.scheme in ("http", "https") and _site_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_site_origin)
+except Exception:
+    pass
 
 LOGGING = {
     "version": 1,
