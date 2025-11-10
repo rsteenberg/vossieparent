@@ -3,6 +3,8 @@
 .header{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#fff;padding:.75rem 1rem}
 .header-inner{display:flex;align-items:center;gap:1rem;max-width:1200px;margin:0 auto}
 .brand{font-weight:700;letter-spacing:.2px}
+.brand a{color:#fff;text-decoration:none}
+.brand a:hover{text-decoration:underline}
 .search{flex:1}
 .search input{width:100%;padding:.7rem 1rem;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.15);color:#fff;outline:none}
 .search input::placeholder{color:#f3f4f6}
@@ -48,3 +50,10 @@
 .kpi .card{padding:.8rem}
 .kpi .value{font-weight:700;font-size:1.1rem}
 @media (max-width: 900px){.layout{grid-template-columns:1fr}.sidebar{order:2}.content{order:1}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Footer styling for visibility and layout consistency */
+.footer{background:#fff;border-top:1px solid var(--ring);margin-top:1rem}
+.footer-inner{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;max-width:1200px;margin:0 auto;padding:1rem;color:var(--muted)}
+.footer .spacer{opacity:.6}
+.footer a{color:inherit;text-decoration:none}
+.footer a:hover{text-decoration:underline}
