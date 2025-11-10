@@ -1,0 +1,47 @@
+# /etc/systemd/system/vossie.service
+# Gunicorn app service for Vossie Parent Portal
+# - Graceful zero-downtime reload via ExecReload (HUP)
+# - PIDFile + RuntimeDirectory for safety
+# - Reads environment from an EnvironmentFile compatible with systemd
+
+[Unit]
+Description=Vossie Parent Portal (Gunicorn)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/vossieparent
+# Load environment (KEY=VALUE lines). Make sure values are systemd-compatible.
+EnvironmentFile=/opt/vossieparent/.env
+# Optional explicit overrides
+Environment=SITE_URL=https://parent.vossie.net
+# Python virtualenv
+ExecStart=/opt/vossieparent/.venv/bin/gunicorn \
+  --name vossie \
+  --workers 3 \
+  --threads 2 \
+  --timeout 60 \
+  --bind 127.0.0.1:8002 \
+  --pid /run/vossie/gunicorn.pid \
+  --access-logfile - \
+  --error-logfile - \
+  config.wsgi:application
+# Graceful reload: SIGHUP tells Gunicorn master to reload workers without dropping connections
+ExecReload=/bin/kill -s HUP $MAINPID
+# Stop signals
+ExecStop=/bin/kill -s TERM $MAINPID
+KillMode=mixed
+# Files/dirs under /run managed by systemd
+RuntimeDirectory=vossie
+PIDFile=/run/vossie/gunicorn.pid
+# Restart policy
+Restart=always
+RestartSec=2s
+# Hard resource limits may be set as needed
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# /etc/systemd/system/vossie.socket (optional)
+# Socket activation for Gunicorn (alternative to TCP bind)
+# If enabled, update ExecStart in vossie.service to use --fd 0 or suitable
+# and set "Requires=vossie.socket" and "After=vossie.socket" in the service.
+
+[Unit]
+Description=Vossie Parent Portal socket
+
+[Socket]
+# Unix domain socket
+ListenStream=/run/vossie/gunicorn.sock
+SocketUser=www-data
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

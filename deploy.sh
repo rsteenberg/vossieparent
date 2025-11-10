@@ -13,6 +13,11 @@ SITE_URL="${SITE_URL:-http://localhost}"    # public URL via Nginx (used for hea
 # Set to 1 to auto-fix ownership (optional, safe if you know your setup)
 FIX_PERMS="${FIX_PERMS:-0}"
 PROJECT_USER="${PROJECT_USER:-www-data}"    # expected owner of runtime dirs/files
+# Optional Nginx reload after deploy (0=skip, 1=reload)
+NGINX_RELOAD="${NGINX_RELOAD:-1}"
+NGINX_SERVICE="${NGINX_SERVICE:-nginx}"
+# Prefer graceful app reload over hard restart (0=restart, 1=reload)
+APP_RELOAD="${APP_RELOAD:-1}"
 # ========== END CONFIG ==========
 
 PY="$VENV_DIR/bin/python"
@@ -66,6 +71,54 @@ health_check() {
   return $ok
 }
 
+reload_nginx_if_enabled() {
+  if [ "$NGINX_RELOAD" = "1" ]; then
+    log "Reloading Nginx configuration ($NGINX_SERVICE)"
+    if command -v nginx >/dev/null 2>&1; then
+      if nginx -t; then
+        systemctl reload "$NGINX_SERVICE" || warn "Failed to reload $NGINX_SERVICE"
+      else
+        warn "nginx -t failed; skipping Nginx reload"
+      fi
+    else
+      warn "nginx command not found; cannot reload $NGINX_SERVICE"
+    fi
+  fi
+}
+
+reload_app_service() {
+  local unit="$SERVICE_NAME"
+  local exec_reload
+  exec_reload=$(systemctl show -p ExecReload --value "$unit" 2>/dev/null || true)
+  if [ -z "$exec_reload" ]; then
+    warn "ExecReload not defined for $unit. Falling back to restart (no zero-downtime guarantee)."
+    systemctl daemon-reload || true
+    systemctl restart "$unit"
+    return $?
+  fi
+
+  # Capture PID before reload to verify behavior
+  local pid_before pid_after
+  pid_before=$(systemctl show -p MainPID --value "$unit" 2>/dev/null || echo 0)
+  log "Reloading service via ExecReload: $unit"
+  systemctl daemon-reload || true
+  if ! systemctl reload "$unit"; then
+    warn "systemctl reload failed; attempting restart"
+    systemctl restart "$unit"
+  fi
+  sleep 2
+  systemctl is-active --quiet "$unit" || die "Service not active after reload/restart."
+  pid_after=$(systemctl show -p MainPID --value "$unit" 2>/dev/null || echo 0)
+  # Informational logging about PID change (depends on ExecReload strategy HUP vs USR2)
+  if [ "$pid_before" -eq 0 ] || [ "$pid_after" -eq 0 ]; then
+    warn "Could not determine MainPID before/after reload."
+  elif [ "$pid_before" -ne "$pid_after" ]; then
+    log "Service MainPID changed ($pid_before -> $pid_after): likely zero-downtime USR2 strategy."
+  else
+    log "Service MainPID unchanged ($pid_after): graceful in-place HUP strategy."
+  fi
+}
+
 main() {
   require_cmd git
   require_cmd curl
@@ -117,14 +170,20 @@ main() {
   log "Django checks (deploy)"
   $MANAGE check --deploy || warn "Django deploy checks reported warnings."
 
-  log "Restart service: $SERVICE_NAME"
-  systemctl daemon-reload || true
-  systemctl restart "$SERVICE_NAME"
-  sleep 2
-  systemctl is-active --quiet "$SERVICE_NAME" || die "Service not active after restart."
+  if [ "$APP_RELOAD" = "1" ]; then
+    log "Reload app service (zero-downtime if ExecReload is configured)"
+    reload_app_service
+  else
+    log "Restart service: $SERVICE_NAME (APP_RELOAD=0)"
+    systemctl daemon-reload || true
+    systemctl restart "$SERVICE_NAME"
+    sleep 2
+    systemctl is-active --quiet "$SERVICE_NAME" || die "Service not active after restart."
+  fi
   systemctl status "$SERVICE_NAME" --no-pager -n 30 || true
 
   log "Health checks"
+  reload_nginx_if_enabled
   if health_check; then
     log "Deployment OK"
     exit 0

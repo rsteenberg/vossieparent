@@ -1223,6 +1223,28 @@ Admin/ops
   - Links
     - N/A
 
+- [2025-11-10] Ops: Systemd and Nginx deploy artifacts (zero-downtime reloads)
+  - Files changed
+    - `deploy/systemd/vossie.service`, `deploy/systemd/vossie.socket` (optional), `deploy/nginx/parent.vossie.net.conf`, `deploy.sh`
+  - Behavior impact
+    - Standardized production service for Gunicorn with ExecReload (HUP) and PIDFile; optional socket activation. Nginx site config for parent.vossie.net with HTTPS and proxy to 127.0.0.1:8002.
+    - `deploy.sh` prefers systemd reload for app (APP_RELOAD=1) and reloads Nginx (NGINX_RELOAD=1) after config validation for zero-downtime updates.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - Adds infrastructure configs for systemd and Nginx.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - HTTPS enforced; basic security headers. Use Let’s Encrypt/Certbot paths.
+  - Rollout/Flags
+    - symlink and enable:
+      - `cp deploy/systemd/vossie.service /etc/systemd/system/` ; `systemctl daemon-reload` ; `systemctl enable --now vossie.service`
+      - `cp deploy/nginx/parent.vossie.net.conf /etc/nginx/sites-available/` ; `ln -s /etc/nginx/sites-available/parent.vossie.net.conf /etc/nginx/sites-enabled/` ; `nginx -t && systemctl reload nginx`
+    - Ensure `/opt/vossieparent/.env` is systemd-compatible (no quotes with special chars) or move sensitive vars into EnvironmentFile.d.
+  - Links
+    - N/A
+
 - [2025-11-10] Students: Load CRM contact details on list page (demo)
   - Files changed
     - `crm/service.py`, `students/views.py`, `templates/students/list.html`
