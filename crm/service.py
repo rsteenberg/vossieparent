@@ -32,13 +32,16 @@ def validate_parent(user: User) -> bool:
             contact = None
     active_students = []
     if contact:
-        # No link table: find students by sponsor email field on Contact
+        # No link table: find students by sponsor email field using the parent's login email
         sponsor_field = getattr(
             settings, "DYNAMICS_SPONSOR1_EMAIL_FIELD", "btfh_sponsor1email"
         )
-        parent_email = (contact.get("emailaddress1") or "").strip()
+        # Use the authenticated user's email address as the join key
+        parent_email = (user.email or "").strip()
         if parent_email:
-            safe_parent_email = parent_email.replace("'", "''")
+            # Case-insensitive compare using tolower() in OData
+            parent_email_lower = parent_email.lower()
+            safe_parent_email = parent_email_lower.replace("'", "''")
             try:
                 res = dyn_get(
                     "contacts",
@@ -46,7 +49,7 @@ def validate_parent(user: User) -> bool:
                         "$select": "contactid,firstname,lastname",
                         "$filter": (
                             f"{sponsor_field} ne null and {sponsor_field} ne '' and "
-                            f"{sponsor_field} eq '{safe_parent_email}'"
+                            f"tolower({sponsor_field}) eq '{safe_parent_email}'"
                         ),
                         "$top": 100,
                     },
@@ -127,7 +130,8 @@ def get_contacts_by_sponsor1_email(email):
     sponsor_field = getattr(
         settings, "DYNAMICS_SPONSOR1_EMAIL_FIELD", "btfh_sponsor1email"
     )
-    safe_email = email.replace("'", "''")
+    # Case-insensitive compare using tolower() in OData
+    safe_email = (email or "").strip().lower().replace("'", "''")
     try:
         res = dyn_get(
             "contacts",
@@ -136,7 +140,10 @@ def get_contacts_by_sponsor1_email(email):
                     "contactid,firstname,lastname,fullname,"
                     "emailaddress1"
                 ),
-                "$filter": f"{sponsor_field} eq '{safe_email}'",
+                "$filter": (
+                    f"{sponsor_field} ne null and {sponsor_field} ne '' and "
+                    f"tolower({sponsor_field}) eq '{safe_email}'"
+                ),
             },
         )
         return res.get("value", [])
