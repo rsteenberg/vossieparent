@@ -3,10 +3,18 @@ from django.utils import timezone
 from django.conf import settings
 from allauth.account.models import EmailAddress
 import logging
-import pyodbc
 import msal
 
 logger = logging.getLogger(__name__)
+
+
+def _pyodbc_module():
+    try:
+        import pyodbc as _mod
+        return _mod
+    except Exception as ex:
+        logger.warning("Fabric pyodbc unavailable: %s", str(ex))
+        return None
 
 
 def _conn():
@@ -186,6 +194,9 @@ def _pyodbc_conn():
     if not cfg:
         logger.warning("Fabric DB config missing in settings.DATABASES")
         return None
+    odb = _pyodbc_module()
+    if not odb:
+        return None
     opts = cfg.get("OPTIONS", {})
     driver = opts.get("driver", "ODBC Driver 18 for SQL Server")
     host = cfg.get("HOST", "")
@@ -225,7 +236,7 @@ def _pyodbc_conn():
         ]
     )
     try:
-        cn = pyodbc.connect(
+        cn = odb.connect(
             conn_str,
             attrs_before={1256: token_bytes},
             timeout=30,
@@ -247,7 +258,7 @@ def _pyodbc_conn():
                     f"PWD={pwd}",
                 ]
             )
-            cn2 = pyodbc.connect(conn_str_sp, timeout=30)
+            cn2 = odb.connect(conn_str_sp, timeout=30)
             return cn2
         except Exception as ex2:
             logger.warning("Fabric pyodbc SPN connect failed: %s", str(ex2))

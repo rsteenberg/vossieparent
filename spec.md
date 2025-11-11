@@ -275,6 +275,16 @@ class EmailEvent(models.Model):
 - Rollout/Flags: Install Microsoft ODBC Driver 18 for SQL Server on hosts. Restart app. No flags.
 - Links: 
 
+[2025-11-11] Fabric lazy pyodbc import (no startup crash)
+- Files: `students/fabric.py`
+- Behavior impact: When ODBC libraries are missing (e.g., libodbc.so.2), the app no longer crashes at import time. Fabric-backed lookups gracefully disable and log a warning; other portal features remain available.
+- Data model: none (migration: no)
+- Integrations/Jobs: none
+- Emails/Templates: none
+- Security/Privacy: none
+- Rollout/Flags: Deploy code. Optionally install OS deps to enable Fabric: `libodbc1` (unixODBC) and Microsoft ODBC Driver 18 (`msodbcsql18`). Restart app.
+- Links: 
+
 [2025-11-11] On-demand progress update (preferences action)
 - Files: `accounts/urls.py`, `accounts/views.py`, `templates/accounts/preferences.html`
 - Behavior impact: Parents who opted in can click “Send progress update now” on the Preferences page to queue an immediate digest email (same template as weekly schedule). A confirmation note appears after redirect.
