@@ -6,9 +6,10 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables from .env for local development
-# In production, prefer real environment variables (systemd, container, etc.)
-load_dotenv(BASE_DIR / ".env")
+# Load environment variables from .env.
+# We set override=True to keep .env as the single source of truth for app config
+# in both local and server deployments, avoiding mismatches with inherited env.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def env_bool(name, default=False):
@@ -180,6 +181,28 @@ else:
         }
     }
 
+_FABRIC_HOST = os.environ.get(
+    "FABRIC_HOST",
+    (
+        "axlypt64epuevkdgi75usjh2pi-"
+        "x4t7amu2lexe5c3dp4sy2tdgtu."
+        "datawarehouse.fabric.microsoft.com"
+    ),
+)
+_FABRIC_DB = os.environ.get("FABRIC_DB", "")
+if _FABRIC_HOST and _FABRIC_DB:
+    DATABASES["fabric"] = {
+        "ENGINE": "mssql",
+        "NAME": _FABRIC_DB,
+        "HOST": f"{_FABRIC_HOST},1433",
+        "USER": os.environ.get("DYN_CLIENT_ID", ""),
+        "PASSWORD": os.environ.get("DYN_CLIENT_SECRET", ""),
+        "OPTIONS": {
+            "driver": "ODBC Driver 17 for SQL Server",
+            "extra_params": "Authentication=ActiveDirectoryServicePrincipal",
+        },
+    }
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -311,6 +334,11 @@ LOGGING = {
             "handlers": ["mail_admins"],
             "level": "ERROR",
             "propagate": True,
+        },
+        "django.security.DisallowedHost": {
+            "handlers": [],
+            "level": "CRITICAL",
+            "propagate": False,
         },
     },
 }

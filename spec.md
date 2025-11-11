@@ -207,6 +207,15 @@ class EmailEvent(models.Model):
 
 [2025-10-30] Dynamics token failure handling (no login crash)
 [2025-11-10] Dynamics contact diagnostics & logging
+- [2025-11-11] Host header hardening & DisallowedHost noise reduction
+- Files: `deploy/nginx/parent.vossie.net.conf`, `config/settings.py`
+- Behavior impact: Unknown Host traffic is dropped at Nginx (never reaches Django); admin email noise from DisallowedHost is suppressed while other security emails remain.
+- Data model: none (migration: no)
+- Integrations/Jobs: none
+- Emails/Templates: admin email routing updated for DisallowedHost only (suppressed)
+- Security/Privacy: Added Nginx default_server catch-alls (80→444, 443→TLS reject) and overwrite `X-Forwarded-For` with `$remote_addr` to prevent client spoofing. Keep `ALLOWED_HOSTS` minimal and set `USE_X_FORWARDED_PROTO=1` in prod. Ensure `CSRF_TRUSTED_ORIGINS` and `SITE_URL` only include real origins (remove Outlook Safe Links).
+- Rollout/Flags: Deploy Nginx config and reload; set env vars in prod: `ALLOWED_HOSTS=parent.vossie.net`, `USE_X_FORWARDED_PROTO=1`, `CSRF_TRUSTED_ORIGINS=https://parent.vossie.net`, `SITE_URL=https://parent.vossie.net`.
+- Links: 
 - Files: `crm/msal_client.py`, `crm/service.py`, `jobs/management/commands/test_dynamics_contact.py`
 - Behavior impact: Adds clearer error logging for token/config and HTTP failures; provides a management command to diagnose why a contact cannot be retrieved (auth, 404, permissions, configuration). Normal user-visible behavior unchanged except easier ops troubleshooting.
 - Data model: none (migration: no)
@@ -876,6 +885,61 @@ Admin/ops
     - Set `SITE_URL` in `.env` (e.g., `https://parents.eduvos.com`).
   - Links
     - N/A
+
+ - [2025-11-11] Jobs: Fabric test command enhancements (schema/table discovery)
+   - Files changed
+     - `jobs/management/commands/test_fabric.py`
+   - Behavior impact
+     - Adds options `--schema`, `--table`, and `--limit`; when a table is missing, the command now lists available tables and searches for names containing “contact”. Prints connected DB name for clarity. This helps quickly locate the correct Warehouse object (e.g., `PP.contact` or `dbo.contact`).
+   - Data model
+     - No changes. (migration: no)
+   - Integrations/Jobs
+     - Still uses `DATABASES['fabric']` (AAD SP). Includes fallback to token-based ODBC if the `Authentication` attribute is not accepted by the local ODBC driver.
+   - Emails/Templates
+     - No changes.
+   - Security/Privacy
+     - Secrets masked in printed connstrings; no data persisted.
+   - Rollout/Flags
+     - No flags. To use: `python manage.py test_fabric --schema PP --table contact --email 'user@example.com'`.
+   - Links
+     - N/A
+
+ - [2025-11-11] Jobs: Fabric connectivity test command
+   - Files changed
+     - `jobs/management/commands/test_fabric.py`
+   - Behavior impact
+     - Adds `python manage.py test_fabric [--email <addr>]` to verify connectivity to Microsoft Fabric via the `fabric` DB alias. Runs a COUNT on `[PP].[contact_v2]` and, if `--email` is provided, selects rows filtered by `btfh_sponsor1email`.
+   - Data model
+     - No changes. (migration: no)
+   - Integrations/Jobs
+     - Uses `DATABASES['fabric']` with AAD Service Principal auth. Read-only verification.
+   - Emails/Templates
+     - No changes.
+   - Security/Privacy
+     - No secrets logged. Prints counts and first row (tuple) only when present. Ensure least-privilege permissions on the service principal.
+   - Rollout/Flags
+     - Pre-reqs: ODBC Driver 18 installed, `mssql-django`/`pyodbc` installed, `.env` has `FABRIC_DB` (and optional `FABRIC_HOST`).
+     - Run: `python manage.py test_fabric --email 'user@example.com'`.
+   - Links
+     - N/A
+
+ - [2025-11-11] Integrations: Microsoft Fabric Warehouse (secondary DB via ODBC)
+   - Files changed
+     - `requirements.txt`, `config/settings.py`
+   - Behavior impact
+     - Adds optional secondary database `fabric` using Microsoft Fabric SQL endpoint over ODBC 18 with Microsoft Entra (AAD) Service Principal. No UI changes; enables read/query from Warehouse when env `FABRIC_DB` is set.
+   - Data model
+     - No changes. (migration: no)
+   - Integrations/Jobs
+     - New DB alias `fabric` configured; no scheduled jobs yet. Connection uses `DYN_CLIENT_ID`/`DYN_CLIENT_SECRET` for SP credentials.
+   - Emails/Templates
+     - No changes.
+   - Security/Privacy
+     - AAD Service Principal auth; secrets remain in env. TLS enforced (`Encrypt=yes`, `TrustServerCertificate=no`). Outbound 1433 required.
+   - Rollout/Flags
+     - Install Microsoft ODBC Driver 18 on all environments. Add `FABRIC_DB=<warehouse_name>` (and optionally `FABRIC_HOST=<endpoint>`). Verify with Django shell `connections['fabric']` SELECT test. No feature flag.
+   - Links
+     - N/A
 
 - [2025-10-28] Students listing via Dynamics sponsor + MSAL authority fix
   - Files changed
