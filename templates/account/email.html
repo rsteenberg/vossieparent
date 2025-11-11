@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_title %}Manage Emails · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Manage email addresses</div>
+
+  <div class="card">
+    <div class="section-title">Your addresses</div>
+    {% if emailaddress_radios %}
+      <form method="post" style="margin:0">
+        {% csrf_token %}
+        <div class="vstack" style="gap:.5rem">
+          {% for r in emailaddress_radios %}
+            <label style="display:flex;align-items:center;gap:.5rem">
+              <input type="radio" name="email" value="{{ r.emailaddress.email }}"
+                     id="{{ r.id }}" {% if r.checked %}checked{% endif %}>
+              <span>{{ r.emailaddress.email }}</span>
+              {% if r.emailaddress.primary %}
+                <span class="badge">Primary</span>
+              {% endif %}
+              {% if r.emailaddress.verified %}
+                <span class="badge">Verified</span>
+              {% else %}
+                <span class="badge muted">Unverified</span>
+              {% endif %}
+            </label>
+          {% endfor %}
+        </div>
+        <div class="hstack" style="gap:.5rem;margin-top:.75rem">
+          <button class="tab" name="action_send" value="1" type="submit">
+            Resend verification
+          </button>
+          <button class="tab" name="action_primary" value="1" type="submit">
+            Make primary
+          </button>
+          <button class="tab" name="action_remove" value="1" type="submit">
+            Remove
+          </button>
+        </div>
+      </form>
+    {% else %}
+      <div class="muted">No email addresses yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="card mt-3">
+    <div class="section-title">Add new address</div>
+    {% if can_add_email %}
+      <form method="post" style="margin:0">
+        {% csrf_token %}
+        <input class="input" type="email" name="email" placeholder="name@example.com" required>
+        <div style="margin-top:.75rem">
+          <button class="tab" type="submit" name="action_add" value="1">
+            Add
+          </button>
+        </div>
+      </form>
+    {% else %}
+      <div class="muted">You cannot add more email addresses.</div>
+    {% endif %}
+  </div>
+
+  <div style="margin-top:1rem">
+    <a class="tab" href="{% url 'accounts:alternate_emails' %}">View alternate emails</a>
+    <a class="tab" href="/">Back to dashboard</a>
+  </div>
+</div>
+{% endblock %}

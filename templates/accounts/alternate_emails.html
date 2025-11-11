@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block page_title %}Alternate Emails · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Alternate email addresses</div>
+  <div class="card">
+    {% if emails %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in emails %}
+              <tr>
+                <td>{{ e.email }}</td>
+                <td>
+                  {% if e.primary %}
+                    <span class="badge">Primary</span>
+                  {% endif %}
+                  {% if e.verified %}
+                    <span class="badge">Verified</span>
+                  {% else %}
+                    <span class="badge muted">Unverified</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="muted">No emails found.</div>
+    {% endif %}
+  </div>
+  <div style="margin-top:1rem">
+    <a class="tab" href="{% url 'account_email' %}">Manage emails (add/remove, verify)</a>
+    <a class="tab" href="/">Back to dashboard</a>
+  </div>
+</div>
+{% endblock %}

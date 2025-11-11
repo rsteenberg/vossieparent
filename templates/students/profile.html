@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block page_title %}Student Profile · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">Student profile</div>
+  <div class="card">
+    {% if student %}
+      <div><strong>Student:</strong> {{ student.first_name }} {{ student.last_name }} (ID {{ student.id }})</div>
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.25rem">External ID: {{ student.external_student_id }}</div>
+    {% else %}
+      <div class="muted">No active student selected.</div>
+    {% endif %}
+  </div>
+
+  <div class="card mt-3">
+    <div class="section-title">Fabric contact (PP.contact)</div>
+    {% if contact %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Field</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for k, v in contact.items %}
+              <tr>
+                <td style="white-space:nowrap">{{ k }}</td>
+                <td style="word-break:break-word">{{ v }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="muted">No Fabric contact found for this student or Fabric is not configured.</div>
+    {% endif %}
+  </div>
+
+  <div style="margin-top:1rem">
+    <a class="tab" href="{% url 'students:list' %}">Change active student</a>
+    <a class="tab" href="{% url 'account_email' %}">Manage email addresses</a>
+  </div>
+</div>
+{% endblock %}

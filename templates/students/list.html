@@ -2,13 +2,20 @@
 {% block page_title %}My Students · Eduvos Parent Portal{% endblock %}
 {% block content %}
 <div class="vstack">
-  <div class="section-title">My Students</div>
+  <div class="hstack between">
+    <div class="section-title">My Students</div>
+    <div>
+      <a class="tab" href="{% url 'students:refresh' %}?next={% url 'students:list' %}">Refresh links</a>
+    </div>
+  </div>
   {% if links %}
     <ul>
       {% for link in links %}
         <li>
           {{ link.student.first_name }} {{ link.student.last_name }}
           — <a class="tab" href="{% url 'students:switch' %}?student_id={{ link.student.id }}">Select</a>
+          — <a class="tab" href="{% url 'students:switch' %}?student_id={{ link.student.id }}&next={% url 'students:profile' %}">View profile</a>
+          — <a class="tab" href="{% url 'students:switch' %}?student_id={{ link.student.id }}&next={% url 'academics:transcript' %}">View transcript</a>
         </li>
       {% endfor %}
     </ul>
@@ -36,3 +43,4 @@
   {% endif %}
 </div>
 {% endblock %}
+

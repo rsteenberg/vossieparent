@@ -79,7 +79,6 @@ LOGIN_URL = "account_login"
 LOGOUT_REDIRECT_URL = "/"
 ACCOUNT_FORMS = {"signup": "accounts.forms.SignupForm"}
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_SESSION_REMEMBER = None
 ACCOUNT_ADAPTER = "accounts.adapter.DevAccountAdapter"
 ACCOUNT_RATE_LIMITS = {
@@ -194,12 +193,16 @@ if _FABRIC_HOST and _FABRIC_DB:
     DATABASES["fabric"] = {
         "ENGINE": "mssql",
         "NAME": _FABRIC_DB,
-        "HOST": f"{_FABRIC_HOST},1433",
+        "HOST": _FABRIC_HOST,
+        "PORT": "1433",
         "USER": os.environ.get("DYN_CLIENT_ID", ""),
         "PASSWORD": os.environ.get("DYN_CLIENT_SECRET", ""),
         "OPTIONS": {
-            "driver": "ODBC Driver 17 for SQL Server",
-            "extra_params": "Authentication=ActiveDirectoryServicePrincipal",
+            "driver": "ODBC Driver 18 for SQL Server",
+            "authentication": "ActiveDirectoryServicePrincipal",
+            "Encrypt": True,
+            "TrustServerCertificate": False,
+            "host_is_server": True,
         },
     }
 
@@ -300,6 +303,14 @@ IDENTITY_LEASE_TTL_SECONDS = int(
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
 if SITE_URL.startswith("http://localhost:8000"):
     ACCOUNT_EMAIL_VERIFICATION = "none"
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+else:
+    # Align allauth email link scheme with SITE_URL
+    try:
+        _scheme = urlparse(SITE_URL).scheme or "https"
+        ACCOUNT_DEFAULT_HTTP_PROTOCOL = _scheme
+    except Exception:
+        ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # Ensure SITE_URL host/origin are whitelisted even if env lists are missing
 try:
@@ -319,12 +330,26 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+        },
         "mail_admins": {
             "level": "ERROR",
             "class": "django.utils.log.AdminEmailHandler",
         },
     },
     "loggers": {
+        "students.fabric": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "crm.service": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "django.request": {
             "handlers": ["mail_admins"],
             "level": "ERROR",

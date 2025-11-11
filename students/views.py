@@ -1,10 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect, render
-from .models import ParentStudentLink
+from django.urls import reverse
+from .models import ParentStudentLink, Student
 from crm.service import get_contact_by_id
 from django.conf import settings
 from .permissions import parent_can_view_student
+from .fabric import fetch_contact_by_id as fabric_contact_by_id
+
 
 @login_required
 def list_students(request):
@@ -46,4 +49,48 @@ def switch_student(request):
     if not parent_can_view_student(request.user, sid):
         return HttpResponseBadRequest("invalid student")
     request.session["active_student_id"] = int(sid)
+    nxt = request.GET.get("next")
+    if nxt:
+        return redirect(nxt)
     return redirect("home")
+
+
+@login_required
+def profile(request):
+    sid = request.session.get("active_student_id")
+    if not sid:
+        return redirect("students:list")
+    if not parent_can_view_student(request.user, sid):
+        return HttpResponseBadRequest("invalid student")
+    st = Student.objects.filter(id=sid).first()
+    if not st:
+        return redirect("students:list")
+    contact = None
+    # Prefer Fabric if configured
+    if "fabric" in settings.DATABASES and st.external_student_id:
+        contact = fabric_contact_by_id(st.external_student_id)
+    # Fallback to Dynamics contact fetch
+    if not contact and st.external_student_id:
+        contact = get_contact_by_id(st.external_student_id)
+    return render(
+        request,
+        "students/profile.html",
+        {
+            "student": st,
+            "contact": contact,
+            "active_nav": "students",
+        },
+    )
+
+
+@login_required
+def refresh_links(request):
+    # Force revalidation of parent↔student links using Fabric/Dynamics
+    from crm.service import validate_parent
+
+    try:
+        validate_parent(request.user)
+    except Exception:
+        pass
+    nxt = request.GET.get("next") or reverse("students:list")
+    return redirect(nxt)

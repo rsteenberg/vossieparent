@@ -14,6 +14,19 @@
         <button type="submit" class="tab">Save</button>
       </div>
     </form>
+    {% if opt_in_checked %}
+      <form method="post" action="{% url 'accounts:send_progress_now' %}" style="margin-top:1rem;">
+        {% csrf_token %}
+        <button type="submit" class="tab">Send progress update now</button>
+      </form>
+    {% endif %}
+    {% if just_sent %}
+      <div class="muted" style="margin-top:.5rem;">Your progress update has been queued to send.</div>
+    {% endif %}
+    <div style="margin-top:1rem">
+      <a class="tab" href="{% url 'accounts:alternate_emails' %}">View your alternate emails</a>
+      <a class="tab" href="{% url 'account_email' %}">Manage emails (add/remove, verify)</a>
+    </div>
   </div>
 </div>
 {% endblock %}

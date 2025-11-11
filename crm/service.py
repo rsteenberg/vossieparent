@@ -4,11 +4,19 @@ from accounts.models import User
 from students.models import Student, ParentStudentLink
 from .msal_client import dyn_get
 import logging
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
 
 def validate_parent(user: User) -> bool:
+    try:
+        if "fabric" in settings.DATABASES:
+            from students.fabric import validate_parent_via_fabric
+            if validate_parent_via_fabric(user):
+                return True
+    except Exception as e:
+        logger.warning("Fabric validation error: %s", str(e))
     if not settings.DYNAMICS_ORG_URL:
         return False
     contact = None
@@ -189,3 +197,86 @@ def get_contact_by_id(contact_id: str):
             "Failed to fetch Dynamics contact %s: %s", contact_id, str(e)
         )
         return None
+
+
+def get_contact_balance(contact_id: str):
+    if not contact_id:
+        return None
+    try:
+        if "fabric" in settings.DATABASES:
+            from students.fabric import fetch_contact_by_id as fabric_contact_by_id
+
+            row = fabric_contact_by_id(contact_id)
+            if row and "bt_collectionbalance" in row:
+                v = row.get("bt_collectionbalance")
+                try:
+                    amt = Decimal(str(v)) if v is not None else None
+                except Exception:
+                    amt = None
+                if amt is not None:
+                    return {"amount": amt, "formatted": f"R {amt:,.2f}"}
+    except Exception as e:
+        logger.warning("Fabric balance fetch failed for %s: %s", contact_id, str(e))
+
+    if not settings.DYNAMICS_ORG_URL:
+        return None
+    try:
+        res = dyn_get(
+            f"contacts({contact_id})",
+            params={"$select": "bt_collectionbalance"},
+            include_annotations=True,
+        )
+        if not res:
+            return None
+        v = res.get("bt_collectionbalance")
+        fv = res.get(
+            "bt_collectionbalance@OData.Community.Display.V1.FormattedValue"
+        )
+        amt = None
+        if v is not None:
+            try:
+                amt = Decimal(str(v))
+            except Exception:
+                amt = None
+        if amt is not None:
+            label = fv or f"R {amt:,.2f}"
+            return {"amount": amt, "formatted": label}
+        if fv:
+            return {"amount": None, "formatted": fv}
+    except Exception as e:
+        logger.warning("Dynamics balance fetch failed for %s: %s", contact_id, str(e))
+    return None
+
+
+# Cached map of entity logical names -> entity set names
+_entity_set_cache = {}
+
+
+def get_entity_set_name(logical_name: str):
+    if not logical_name:
+        return None
+    if logical_name in _entity_set_cache:
+        return _entity_set_cache[logical_name]
+    try:
+        res = dyn_get(
+            f"EntityDefinitions(LogicalName='{logical_name}')",
+            params={"$select": "EntitySetName"},
+        )
+        name = res.get("EntitySetName")
+        if name:
+            _entity_set_cache[logical_name] = name
+        return name
+    except Exception as e:
+        logger.warning("EntitySetName resolve failed for %s: %s", logical_name, str(e))
+        return None
+
+
+def fetchxml(logical_name: str, fetch_xml: str, include_annotations: bool = True):
+    if not settings.DYNAMICS_ORG_URL:
+        return {"value": []}
+    esn = get_entity_set_name(logical_name) or logical_name
+    try:
+        return dyn_get(esn, params={"fetchXml": fetch_xml}, include_annotations=include_annotations)
+    except Exception as e:
+        logger.warning("FetchXML call failed for %s: %s", logical_name, str(e))
+        return {"value": []}

@@ -5,4 +5,5 @@ app_name = "academics"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("transcript/", views.transcript, name="transcript"),
 ]

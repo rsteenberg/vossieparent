@@ -11,6 +11,8 @@ from django.conf import settings
 from allauth.account.models import EmailAddress
 from .models import EmailPreference, EmailChangeRequest
 from students.models import Student
+from mailer.models import Campaign, MessageLog, EmailTemplate
+from jobs.tasks import send_parent_update
 
 def home(request):
     if request.user.is_authenticated:
@@ -61,7 +63,7 @@ def preferences(request):
     return render(
         request,
         "accounts/preferences.html",
-        {"opt_in_checked": checked, "active_nav": "preferences"},
+        {"opt_in_checked": checked, "active_nav": "preferences", "just_sent": bool(request.GET.get("sent"))},
     )
 
 @login_required
@@ -122,3 +124,54 @@ def _maybe_finalize_email_change(ecr, request):
         EmailAddress.objects.filter(user=user).exclude(email=user.email).update(primary=False)
         update_session_auth_hash(request, user)
         ecr.delete()
+
+
+@login_required
+def alternate_emails(request):
+    emails = (
+        EmailAddress.objects.filter(user=request.user)
+        .order_by("-primary", "-verified", "email")
+    )
+    return render(
+        request,
+        "accounts/alternate_emails.html",
+        {"emails": emails, "active_nav": "preferences"},
+    )
+
+@login_required
+def send_progress_now(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    pref = getattr(request.user, "email_pref", None)
+    if not pref or not pref.marketing_opt_in:
+        return redirect("accounts:preferences")
+    cid = getattr(settings, "PROGRESS_CAMPAIGN_ID", "")
+    campaign = None
+    if cid:
+        campaign = Campaign.objects.filter(pk=cid).first()
+    if not campaign:
+        campaign = Campaign.objects.filter(template__key="progress_update").first()
+    if not campaign:
+        campaign = Campaign.objects.filter(
+            template__html_template_path="emails/progress_update.html"
+        ).first()
+    if not campaign:
+        tmpl, _ = EmailTemplate.objects.get_or_create(
+            key="progress_update",
+            defaults={
+                "subject_template": "Your weekly update",
+                "html_template_path": "emails/progress_update.html",
+                "text_template_path": "",
+            },
+        )
+        campaign, _ = Campaign.objects.get_or_create(
+            name="Progress Update",
+            defaults={
+                "template": tmpl,
+                "enabled": True,
+                "schedule_cron": "0 8 * * MON",
+            },
+        )
+    MessageLog.objects.filter(campaign=campaign, user=request.user).delete()
+    send_parent_update.delay(campaign.id, request.user.id)
+    return redirect(reverse("accounts:preferences") + "?sent=1")

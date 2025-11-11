@@ -215,19 +215,79 @@ class EmailEvent(models.Model):
 - Emails/Templates: admin email routing updated for DisallowedHost only (suppressed)
 - Security/Privacy: Added Nginx default_server catch-alls (80→444, 443→TLS reject) and overwrite `X-Forwarded-For` with `$remote_addr` to prevent client spoofing. Keep `ALLOWED_HOSTS` minimal and set `USE_X_FORWARDED_PROTO=1` in prod. Ensure `CSRF_TRUSTED_ORIGINS` and `SITE_URL` only include real origins (remove Outlook Safe Links).
 - Rollout/Flags: Deploy Nginx config and reload; set env vars in prod: `ALLOWED_HOSTS=parent.vossie.net`, `USE_X_FORWARDED_PROTO=1`, `CSRF_TRUSTED_ORIGINS=https://parent.vossie.net`, `SITE_URL=https://parent.vossie.net`.
-- Links: 
-- Files: `crm/msal_client.py`, `crm/service.py`, `jobs/management/commands/test_dynamics_contact.py`
-- Behavior impact: Adds clearer error logging for token/config and HTTP failures; provides a management command to diagnose why a contact cannot be retrieved (auth, 404, permissions, configuration). Normal user-visible behavior unchanged except easier ops troubleshooting.
+ - Links: 
+  - Files: `crm/msal_client.py`, `crm/service.py`, `jobs/management/commands/test_dynamics_contact.py`
+  - Behavior impact: Adds clearer error logging for token/config and HTTP failures; provides a management command to diagnose why a contact cannot be retrieved (auth, 404, permissions, configuration). Normal user-visible behavior unchanged except easier ops troubleshooting.
+  - Data model: none (migration: no)
+  - Integrations/Jobs: new management command `test_dynamics_contact` for on-demand CRM checks.
+  - Emails/Templates: none
+  - Security/Privacy: Logs exclude secrets; only status codes and truncated response bodies (<=500 chars). Safe error surfaces for admins.
+  - Rollout/Flags: Run `python manage.py test_dynamics_contact --id <guid>` in production to verify CRM connectivity; no flag.
+  - Links: 
+
+[2025-11-11] Academics transcript (Dynamics FetchXML view)
+- Files: `crm/service.py`, `academics/views.py`, `academics/urls.py`, `templates/academics/transcript.html`
+- Behavior impact: New Academics page at `/academics/transcript/` shows student transcript header and module rows, mirroring the previous portal Liquid logic (Not Published, Fin blocked, Published) based on Dataverse fields. Uses the selected student from session or accepts `?contactid=` GUID.
 - Data model: none (migration: no)
-- Integrations/Jobs: new management command `test_dynamics_contact` for on-demand CRM checks.
+- Integrations/Jobs: Dataverse Web API via FetchXML (`fetchxml()` helper added). Resolves entity set names dynamically via metadata endpoint and requests formatted values.
 - Emails/Templates: none
-- Security/Privacy: Logs exclude secrets; only status codes and truncated response bodies (<=500 chars). Safe error surfaces for admins.
-- Rollout/Flags: Run `python manage.py test_dynamics_contact --id <guid>` in production to verify CRM connectivity; no flag.
+- Security/Privacy: Guarded by `parent_can_view_student()` and identity lease. No secrets in templates. Server-side Dynamics calls only.
+- Rollout/Flags: Ensure `DYN_*` env vars set (tenant, client, secret, org URL). Link page from Academics nav if desired. Optionally extend to support multi-program transcripts.
 - Links: 
 
-- Files: `crm/msal_client.py`, `crm/service.py`
-- Behavior impact: If Dataverse/MSAL auth fails (e.g., invalid client secret), login proceeds without crashing; CRM validation is skipped for that request.
+[2025-11-11] Academics transcript links (UI)
+- Files: `templates/students/list.html`, `templates/academics/index.html`
+- Behavior impact: Added “View transcript” links. From Students list, uses switch-and-next to set active linked student and redirect to `/academics/transcript/`. From Academics index, shows a button when a student is selected. Linked student ID (local) drives session; external ID is resolved server-side.
 - Data model: none (migration: no)
+- Integrations/Jobs: none
+- Emails/Templates: none
+- Security/Privacy: Access still guarded by `parent_can_view_student()`; no exposure of secrets.
+- Rollout/Flags: None
+- Links: 
+
+[2025-11-11] Transcript styling improvements
+- Files: `static/css/app.css`, `templates/academics/transcript.html`
+- Behavior impact: Added bordered (lined) tables, striped/hover states, and centered Year + score columns. Removed inline widths; replaced with utility classes. Header summary table remains left-aligned for readability.
+- Data model: none (migration: no)
+- Integrations/Jobs: none
+- Emails/Templates: none
+- Security/Privacy: none
+- Rollout/Flags: In production, run collectstatic so updated CSS is served.
+- Links: 
+
+[2025-11-11] Financials balance snapshot
+- Files: `crm/service.py`, `financials/views.py`, `templates/financials/index.html`
+- Behavior impact: Financials page shows the outstanding balance for the selected student, using the student's linked Dataverse contact's bt_collectionbalance. Message mirrors legacy portal behavior: "Current Payment Due" when >= 0, else "Currently no payment due".
+- Data model: none (migration: no)
+- Integrations/Jobs: Server-side fetch via Dataverse Web API; prefers Fabric DB when configured. New helper `get_contact_balance()`.
+- Emails/Templates: none
+- Security/Privacy: Access guarded by `parent_can_view_student()`; no secrets in templates; Dynamics token usage remains server-side.
+- Rollout/Flags: Ensure Dynamics env vars set; optional Fabric DB for faster reads. No flags.
+- Links: 
+
+[2025-11-11] Fabric ODBC driver 18 + allauth cleanup
+- Files: `config/settings.py`
+- Behavior impact: Fixes Fabric DB pyodbc error (Invalid connection string attribute) by switching to "ODBC Driver 18 for SQL Server" and using ActiveDirectoryServicePrincipal auth. Keeps Fabric enabled in dev. Removes deprecated allauth setting to silence system check warning.
+- Data model: none (migration: no)
+- Integrations/Jobs: Fabric DB connection via mssql-django/pyodbc updated.
+- Emails/Templates: none
+- Security/Privacy: Enforces encrypted connection (Encrypt=yes; TrustServerCertificate=no) for Fabric.
+- Rollout/Flags: Install Microsoft ODBC Driver 18 for SQL Server on hosts. Restart app. No flags.
+- Links: 
+
+[2025-11-11] On-demand progress update (preferences action)
+- Files: `accounts/urls.py`, `accounts/views.py`, `templates/accounts/preferences.html`
+- Behavior impact: Parents who opted in can click “Send progress update now” on the Preferences page to queue an immediate digest email (same template as weekly schedule). A confirmation note appears after redirect.
+- Data model: none (migration: no)
+- Integrations/Jobs: Uses existing RQ job `send_parent_update` on the `mail` queue. Resets idempotency by removing prior `MessageLog` for this (campaign,user) before enqueueing.
+- Emails/Templates: Reuses configured Campaign and EmailTemplate (key `progress_update` recommended).
+- Security/Privacy: Requires login and opt-in; CSRF-protected POST action; no secrets in template.
+- Rollout/Flags: Ensure an RQ worker is running for the `mail` queue. Optionally set `PROGRESS_CAMPAIGN_ID` in env; otherwise Campaign resolved by template key/path.
+- Links: 
+
+  - Files: `crm/msal_client.py`, `crm/service.py`
+  - Behavior impact: If Dataverse/MSAL auth fails (e.g., invalid client secret), login proceeds without crashing; CRM validation is skipped for that request.
+  - Data model: none (migration: no)
 - Integrations/Jobs: MSAL token acquisition now raises a specific exception; service layer swallows failures and returns False.
 - Emails/Templates: none
 - Security/Privacy: No secrets logged; guidance to rotate/fix client secret in Azure AD.
@@ -883,6 +943,129 @@ Admin/ops
     - Reduces risk of incorrect domain leakage when requests originate through alternate hosts.
   - Rollout/Flags
     - Set `SITE_URL` in `.env` (e.g., `https://parents.eduvos.com`).
+  - Links
+    - N/A
+
+ - [2025-11-11] Fabric: Default to PP.contact and fixed sponsor fields in code
+   - Files changed
+     - `students/fabric.py`, `students/management/commands/diagnose_fabric_linking.py`
+   - Behavior impact
+     - Default candidate table list now only includes `PP.contact` (no implicit `contact_v2` fallback).
+     - Sponsor-email columns default to `btfh_sponsor1email` and `btfh_sponsor2email` without requiring environment variables.
+     - Diagnostics command lints cleaned by removing unused imports.
+   - Data model
+     - No changes. (migration: no)
+   - Integrations/Jobs
+     - None.
+   - Emails/Templates
+     - None.
+   - Security/Privacy
+     - No change.
+   - Rollout/Flags
+     - No flags. No env vars required for table/columns; restart server after deploy.
+   - Links
+     - N/A
+
+- [2025-11-11] Students: Fabric linking diagnostics (logging + CLI)
+  - Files changed
+    - `students/fabric.py`, `crm/service.py`, `config/settings.py`
+    - `students/management/commands/diagnose_fabric_linking.py`
+    - `students/views.py`, `students/urls.py`, `templates/students/list.html`
+  - Behavior impact
+    - Adds INFO-level logging for Fabric validation and sponsor queries.
+    - New management command `diagnose_fabric_linking` to display which emails
+      are considered (primary + alternates) and what Fabric matches are found.
+      Optional `--apply` runs linking immediately.
+    - Students page now has a "Refresh links" button that triggers revalidation.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - Fabric DB queries enhanced: sponsor fields trimmed (LTRIM/RTRIM) and
+      fallback to `PP.contact_v2` when `PP.contact` fails.
+  - Emails/Templates
+    - No email changes.
+  - Security/Privacy
+    - Diagnostics log email values and match counts only; no secrets.
+  - Rollout/Flags
+    - Ensure logging prints to console in your environment. Enable optional
+      inclusion of unverified alternates via env flag:
+      `FABRIC_INCLUDE_UNVERIFIED_ALT_EMAILS=1`.
+  - Links
+    - Run: `python manage.py diagnose_fabric_linking --email you@example.com`
+      and (optionally) `--apply` to persist links.
+
+- [2025-11-11] Accounts: Alternate Emails listing page
+  - Files changed
+    - `accounts/views.py`, `accounts/urls.py`
+    - `templates/accounts/alternate_emails.html`,
+      `templates/accounts/preferences.html`
+  - Behavior impact
+    - Adds a page at `/parents/emails/` to list the user's primary and
+      alternate emails with their verification status. Provides links to
+      allauth's manage page to add/remove and verify addresses.
+  - Data model
+    - No changes. Uses allauth `EmailAddress` table. (migration: no)
+  - Integrations/Jobs
+    - None.
+  - Emails/Templates
+    - New template `templates/accounts/alternate_emails.html`.
+  - Security/Privacy
+    - Authenticated-only; user can view only their own email addresses.
+  - Rollout/Flags
+    - None. Accessible via Preferences page or direct URL `/parents/emails/`.
+  - Links
+    - N/A
+
+- [2025-11-11] Students: Fabric-backed profile and sponsor-email linking
+  - Files changed
+    - `students/fabric.py`, `students/views.py`, `students/urls.py`
+    - `templates/students/profile.html`, `templates/students/list.html`
+    - `crm/service.py`
+  - Behavior impact
+    - Parents can view a Student Profile page that shows full contact data
+      from the Fabric Warehouse table `PP.contact` for the selected student.
+    - Parent↔student linking now prefers Fabric by matching the logged-in
+      parent's email (including any verified alternate emails) to
+      `btfh_sponsor1email` OR `btfh_sponsor2email` on `PP.contact`.
+      If Fabric is unavailable, the system falls back to Dynamics as before.
+    - The Students list now includes a "View profile" action that selects the
+      student and redirects to the profile page.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - Reads from `DATABASES['fabric']` using the existing AAD SP auth.
+    - No scheduled jobs.
+  - Emails/Templates
+    - No outbound email changes. New template `templates/students/profile.html`.
+  - Security/Privacy
+    - Read-only access to Warehouse contact records. No PII persisted beyond
+      local `Student` name fields used for display.
+  - Rollout/Flags
+    - Ensure `.env` configures `FABRIC_DB` (and `FABRIC_HOST`).
+    - Parent-student links are refreshed by the identity lease middleware.
+  - Links
+    - N/A
+
+- [2025-11-11] Email domain: Sites sync + HTTPS scheme from SITE_URL
+  - Files changed
+    - `accounts/signals.py`, `config/settings.py`
+  - Behavior impact
+    - Outgoing allauth emails now use the domain from `SITE_URL` instead of
+      `example.com`, and links use the correct scheme: `https` for production
+      (e.g. `https://parent.vossie.net`) and `http` on localhost.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - On `post_migrate`, the `django.contrib.sites.Site` record is updated to
+      match `SITE_URL` host.
+  - Emails/Templates
+    - No template changes; ensures email subjects/bodies reflect the correct
+      site domain via the Sites framework.
+  - Security/Privacy
+    - Prevents leaking placeholder domains in user communications.
+  - Rollout/Flags
+    - Set `SITE_URL=https://parent.vossie.net` in production `.env` (and keep
+      `http://localhost:8000` locally). Redeploy; no migrations required.
   - Links
     - N/A
 
