@@ -4,12 +4,48 @@
 <div class="vstack">
   <div class="section-title">Academics</div>
   {% if not active_student_id %}
-    <div class="card"><div class="muted">Select a student to view enrollments and grades.</div></div>
+    <div class="card">
+      <div class="muted">No student is linked yet. Link a student to view enrollments and grades.</div>
+      <div class="mt-2">
+        <a class="btn btn-primary" href="{% url 'students:list' %}">Link a student</a>
+      </div>
+    </div>
   {% else %}
     <div class="card">
-      <div class="muted">Showing academics for student ID {{ active_student_id }}.</div>
-      <div class="mt-2">
-        <a class="btn btn-primary" href="{% url 'academics:transcript' %}">View Transcript</a>
+      <div class="muted">
+        {% if active_student %}
+          Showing academics for {{ active_student.first_name }} {{ active_student.last_name }}
+          {% if active_student_number %}
+            (Student {{ active_student_number }})
+          {% endif %}.
+        {% else %}
+          Showing academics for the selected student.
+        {% endif %}
+      </div>
+      <div class="mt-2 grid">
+        <a class="tile" href="{% url 'academics:transcript' %}">
+          <div>
+            <div class="section-title">View Transcript</div>
+            <div class="muted">See detailed module results and academic history for this student.</div>
+          </div>
+        </a>
+        <a class="tile" href="{% url 'academics:atrisk' %}">
+          <div class="hstack between" style="width:100%">
+            <div>
+              <div class="section-title">At Risk</div>
+              <div class="muted">View at-risk flags, reasons, and comments captured for this student.</div>
+            </div>
+            <div>
+              {% if atrisk_count is None %}
+                <span class="badge warning">Summary unavailable</span>
+              {% elif atrisk_count > 0 %}
+                <span class="badge urgent">{{ atrisk_count }} at-risk record{% if atrisk_count != 1 %}s{% endif %}</span>
+              {% else %}
+                <span class="badge info">No at-risk entries</span>
+              {% endif %}
+            </div>
+          </div>
+        </a>
       </div>
     </div>
   {% endif %}

@@ -4,75 +4,84 @@
 <div class="vstack">
   <div class="section-title">Academic Transcript</div>
 
-  <div class="card">
-    <table class="table table-bordered">
-      <tbody>
-        <tr><td>Name:</td><td>{{ header.name|default:"" }}</td></tr>
-        <tr><td>Student Number:</td><td>{{ header.student_number|default:"" }}</td></tr>
-        <tr><td>ID Number:</td><td>{{ header.id_number|default:"" }}</td></tr>
-        <tr><td>Program Status:</td><td>{{ header.program_status|default:"" }}</td></tr>
-        <tr><td>Program Name:</td><td>{{ header.program_name|default:"" }}</td></tr>
-      </tbody>
-    </table>
-  </div>
+  {% if no_student %}
+    <div class="card">
+      <div class="muted">No student is linked yet. Link a student to view the academic transcript.</div>
+      <div class="mt-2">
+        <a href="{% url 'students:list' %}" class="btn btn-primary">Link a student</a>
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <table class="table table-bordered">
+        <tbody>
+          <tr><td>Name:</td><td>{{ header.name|default:"" }}</td></tr>
+          <tr><td>Student Number:</td><td>{{ header.student_number|default:"" }}</td></tr>
+          <tr><td>ID Number:</td><td>{{ header.id_number|default:"" }}</td></tr>
+          <tr><td>Program Status:</td><td>{{ header.program_status|default:"" }}</td></tr>
+          <tr><td>Program Name:</td><td>{{ header.program_name|default:"" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-  <div class="card">
-    <table class="table table-bordered table-striped table-hover" id="dataTable">
-      <thead>
-        <tr>
-          <th class="w-10 text-center">Year</th>
-          <th class="w-10">Module Code</th>
-          <th class="w-15">Course</th>
-          <th class="w-10 text-center">Formative Average</th>
-          <th class="w-10 text-center">Summative Average</th>
-          <th class="w-10 text-center">Final Average</th>
-          <th class="w-10">Result Code</th>
-          <th class="w-15">Result Status</th>
-          <th class="w-10">Module Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ev in np_rows %}
-        <tr>
-          <td class="text-center">{{ ev.bt_academicyear }}</td>
-          <td>{{ ev.pr__msdyn_productnumber }}</td>
-          <td>{{ ev.mshied_name }}</td>
-          <td class="text-center" colspan="6">Not Published</td>
-        </tr>
-        {% endfor %}
+    <div class="card">
+      <table class="table table-bordered table-striped table-hover" id="dataTable">
+        <thead>
+          <tr>
+            <th class="w-10 text-center">Year</th>
+            <th class="w-10">Module Code</th>
+            <th class="w-15">Course</th>
+            <th class="w-10 text-center">Formative Average</th>
+            <th class="w-10 text-center">Summative Average</th>
+            <th class="w-10 text-center">Final Average</th>
+            <th class="w-10">Result Code</th>
+            <th class="w-15">Result Status</th>
+            <th class="w-10">Module Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in np_rows %}
+          <tr>
+            <td class="text-center">{{ ev.bt_academicyear }}</td>
+            <td>{{ ev.pr__msdyn_productnumber }}</td>
+            <td>{{ ev.mshied_name }}</td>
+            <td class="text-center" colspan="6">Not Published</td>
+          </tr>
+          {% endfor %}
 
-        {% for ev in fb_rows %}
-        <tr>
-          <td class="text-center">{{ ev.bt_academicyear }}</td>
-          <td>{{ ev.pr__msdyn_productnumber }}</td>
-          <td>{{ ev.mshied_name }}</td>
-          {% if ev.bt_publishedresultcode__label == "SUP" %}
-            <td class="text-center" colspan="3">Fin blocked</td>
+          {% for ev in fb_rows %}
+          <tr>
+            <td class="text-center">{{ ev.bt_academicyear }}</td>
+            <td>{{ ev.pr__msdyn_productnumber }}</td>
+            <td>{{ ev.mshied_name }}</td>
+            {% if ev.bt_publishedresultcode__label == "SUP" %}
+              <td class="text-center" colspan="3">Fin blocked</td>
+              <td>{{ ev.bt_publishedresultcode__label }}</td>
+              <td>Supplementary Exam</td>
+              <td>Fin blocked</td>
+            {% else %}
+              <td class="text-center" colspan="6">Fin blocked</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+
+          {% for ev in p_rows %}
+          <tr>
+            <td class="text-center">{{ ev.bt_academicyear }}</td>
+            <td>{{ ev.pr__msdyn_productnumber }}</td>
+            <td>{{ ev.mshied_name }}</td>
+            <td class="text-center">{{ ev.bt_publishedsemesteraverage|floatformat:0 }}</td>
+            <td class="text-center">{{ ev.bt_publishedexamaverage|floatformat:0 }}</td>
+            <td class="text-center">{{ ev.bt_publishedfinalaverage|floatformat:0 }}</td>
             <td>{{ ev.bt_publishedresultcode__label }}</td>
-            <td>Supplementary Exam</td>
-            <td>Fin blocked</td>
-          {% else %}
-            <td class="text-center" colspan="6">Fin blocked</td>
-          {% endif %}
-        </tr>
-        {% endfor %}
-
-        {% for ev in p_rows %}
-        <tr>
-          <td class="text-center">{{ ev.bt_academicyear }}</td>
-          <td>{{ ev.pr__msdyn_productnumber }}</td>
-          <td>{{ ev.mshied_name }}</td>
-          <td class="text-center">{{ ev.bt_publishedsemesteraverage|floatformat:0 }}</td>
-          <td class="text-center">{{ ev.bt_publishedexamaverage|floatformat:0 }}</td>
-          <td class="text-center">{{ ev.bt_publishedfinalaverage|floatformat:0 }}</td>
-          <td>{{ ev.bt_publishedresultcode__label }}</td>
-          <td>{{ ev.bt_publishedresultstatus__label }}</td>
-          <td>{{ ev.bt_publishedmodulestatus__label }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+            <td>{{ ev.bt_publishedresultstatus__label }}</td>
+            <td>{{ ev.bt_publishedmodulestatus__label }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
 
   <div class="hstack gap-2">
     <a href="/" class="btn btn-secondary">Home</a>

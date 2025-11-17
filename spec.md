@@ -255,6 +255,36 @@ class EmailEvent(models.Model):
 - Rollout/Flags: In production, run collectstatic so updated CSS is served.
 - Links: 
 
+[2025-11-16] Academics at-risk (Fabric view)
+- Files: `students/fabric.py`, `academics/views.py`, `academics/urls.py`, `templates/academics/index.html`, `templates/academics/atrisk.html`
+- Behavior impact: New Academics page at `/academics/atrisk/` shows at-risk flags from the Fabric `atrisk` table for the selected student. Accessible from the Academics page once a student is active.
+- Data model: none (migration: no)
+- Integrations/Jobs: Fabric DB read via pyodbc; new helper `fetch_atrisk_for_student()` queries the configured `FABRIC_ATRISK_TABLE` (default `PP.atrisk`) by `edv_studentid`.
+- Emails/Templates: none
+- Security/Privacy: Guarded by `parent_can_view_student()` and identity lease; only parents linked to the student can view entries.
+- Rollout/Flags: Ensure `DATABASES['fabric']` is configured and set `FABRIC_ATRISK_TABLE` if the table name/schema differs from `PP.atrisk`. No feature flag.
+- Links: 
+
+[2025-11-16] Academics tiles & no-student CTAs
+- Files: `templates/academics/index.html`, `templates/academics/transcript.html`, `templates/academics/atrisk.html`, `academics/views.py`
+- Behavior impact: Academics index shows Transcript and At Risk as large tiles instead of small buttons, and both Transcript and At Risk pages show a friendly message with a "Link a student" button when no active student is selected instead of an error response.
+- Data model: none (migration: no)
+- Integrations/Jobs: none
+- Emails/Templates: none
+- Security/Privacy: unchanged; views still guarded by `parent_can_view_student()` and identity lease.
+- Rollout/Flags: No flags; deploy templates and views.
+- Links: 
+
+[2025-11-16] Academics header student label
+- Files: `academics/views.py`, `templates/academics/index.html`
+- Behavior impact: Academics header now shows the active student's first name, last name, and student number (when available from Fabric/Dynamics) instead of just an internal student ID.
+- Data model: none (migration: no)
+- Integrations/Jobs: optional Fabric/Dynamics contact lookup on Academics index to resolve `msdyn_contactpersonid`.
+- Emails/Templates: none
+- Security/Privacy: unchanged; access still limited by `parent_can_view_student()` and identity lease.
+- Rollout/Flags: No flags; ensure Fabric/Dynamics configs are valid so student numbers resolve where expected.
+- Links: 
+
 [2025-11-11] Financials balance snapshot
 - Files: `crm/service.py`, `financials/views.py`, `templates/financials/index.html`
 - Behavior impact: Financials page shows the outstanding balance for the selected student, using the student's linked Dataverse contact's bt_collectionbalance. Message mirrors legacy portal behavior: "Current Payment Due" when >= 0, else "Currently no payment due".

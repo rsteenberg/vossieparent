@@ -346,3 +346,25 @@ def _candidate_tables() -> list[tuple[str, str]]:
             sch, tbl = it.split(".", 1)
             result.append((sch.strip("[]"), tbl.strip("[]")))
     return result
+
+
+def _parse_schema_table(raw: str) -> tuple[str, str]:
+    parts = [x.strip() for x in str(raw).split(".", 1) if x.strip()]
+    if len(parts) == 2:
+        return parts[0].strip("[]"), parts[1].strip("[]")
+    if parts:
+        return "dbo", parts[0].strip("[]")
+    return "dbo", "atrisk"
+
+
+def fetch_atrisk_for_student(student_external_id: str, limit: int = 500):
+    if not student_external_id:
+        return []
+    raw = getattr(settings, "FABRIC_ATRISK_TABLE", "PP.atrisk")
+    schema, table = _parse_schema_table(raw)
+    sql = (
+        f"SELECT TOP {int(limit)} * FROM [{schema}].[{table}] "
+        "WHERE edv_studentid = ? "
+        "ORDER BY edv_year DESC, edv_week DESC, createdon DESC"
+    )
+    return _pyodbc_query(sql, [student_external_id])

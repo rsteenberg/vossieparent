@@ -1,15 +1,47 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.http import HttpResponseForbidden
 from django.shortcuts import render
+from django.conf import settings
 from students.models import Student
 from students.permissions import parent_can_view_student
-from crm.service import fetchxml
+from students.fabric import fetch_atrisk_for_student, fetch_contact_by_id as fabric_contact_by_id
+from crm.service import fetchxml, get_contact_by_id
 
 
 @login_required
 def index(request):
     sid = request.session.get("active_student_id")
-    ctx = {"active_nav": "academics", "active_student_id": sid}
+    student = None
+    student_number = ""
+    atrisk_count = None
+    if sid:
+        student = Student.objects.filter(id=sid).first()
+        contact = None
+        if student and "fabric" in settings.DATABASES and student.external_student_id:
+            try:
+                contact = fabric_contact_by_id(student.external_student_id)
+            except Exception:
+                contact = None
+        if (not contact and student and getattr(settings, "DYNAMICS_ORG_URL", "") and student.external_student_id):
+            try:
+                contact = get_contact_by_id(student.external_student_id)
+            except Exception:
+                contact = None
+        if contact:
+            student_number = contact.get("msdyn_contactpersonid") or ""
+        if "fabric" in settings.DATABASES and student and student.external_student_id:
+            try:
+                rows = fetch_atrisk_for_student(student.external_student_id, limit=500)
+                atrisk_count = len(rows or [])
+            except Exception:
+                atrisk_count = None
+    ctx = {
+        "active_nav": "academics",
+        "active_student_id": sid,
+        "active_student": student,
+        "active_student_number": student_number,
+        "atrisk_count": atrisk_count,
+    }
     return render(request, "academics/index.html", ctx)
 
 
@@ -24,10 +56,28 @@ def transcript(request):
     else:
         sid = request.session.get("active_student_id")
         if not sid:
-            return HttpResponseBadRequest("student not selected")
+            ctx = {
+                "active_nav": "academics",
+                "student": None,
+                "header": {},
+                "np_rows": [],
+                "fb_rows": [],
+                "p_rows": [],
+                "no_student": True,
+            }
+            return render(request, "academics/transcript.html", ctx)
         student = Student.objects.filter(id=sid).first()
         if not student:
-            return HttpResponseBadRequest("invalid student")
+            ctx = {
+                "active_nav": "academics",
+                "student": None,
+                "header": {},
+                "np_rows": [],
+                "fb_rows": [],
+                "p_rows": [],
+                "no_student": True,
+            }
+            return render(request, "academics/transcript.html", ctx)
         ext_id = student.external_student_id
     if not parent_can_view_student(request.user, student.id):
         return HttpResponseForbidden("forbidden")
@@ -210,3 +260,48 @@ def transcript(request):
         "p_rows": p_rows,
     }
     return render(request, "academics/transcript.html", ctx)
+
+
+@login_required
+def atrisk(request):
+    ext_id = request.GET.get("contactid") or request.GET.get("studentid")
+    student = None
+    if ext_id:
+        student = Student.objects.filter(external_student_id=ext_id).first()
+        if not student:
+            return HttpResponseForbidden("forbidden")
+    else:
+        sid = request.session.get("active_student_id")
+        if not sid:
+            ctx = {
+                "active_nav": "academics",
+                "student": None,
+                "rows": [],
+                "no_student": True,
+            }
+            return render(request, "academics/atrisk.html", ctx)
+        student = Student.objects.filter(id=sid).first()
+        if not student:
+            ctx = {
+                "active_nav": "academics",
+                "student": None,
+                "rows": [],
+                "no_student": True,
+            }
+            return render(request, "academics/atrisk.html", ctx)
+    if not parent_can_view_student(request.user, student.id):
+        return HttpResponseForbidden("forbidden")
+
+    rows = []
+    if "fabric" in settings.DATABASES and student.external_student_id:
+        try:
+            rows = fetch_atrisk_for_student(student.external_student_id)
+        except Exception:
+            rows = []
+
+    ctx = {
+        "active_nav": "academics",
+        "student": student,
+        "rows": rows,
+    }
+    return render(request, "academics/atrisk.html", ctx)

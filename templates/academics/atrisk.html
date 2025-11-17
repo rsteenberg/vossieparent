@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_title %}At Risk · Eduvos Parent Portal{% endblock %}
+{% block content %}
+<div class="vstack">
+  <div class="section-title">At Risk</div>
+ 
+  {% if no_student %}
+    <div class="card">
+      <div class="muted">No student is linked yet. Link a student to view at-risk flags.</div>
+      <div class="mt-2">
+        <a href="{% url 'students:list' %}" class="btn btn-primary">Link a student</a>
+      </div>
+    </div>
+  {% else %}
+    <div class="card mb-3">
+      <div class="muted">
+        {% if student %}
+          Showing at-risk flags for {{ student.first_name }} {{ student.last_name }}.
+        {% else %}
+          No student selected.
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      {% if rows %}
+        <table class="table table-bordered table-striped table-hover">
+          <thead>
+            <tr>
+              <th class="w-10 text-center">Year</th>
+              <th class="w-10 text-center">Week</th>
+              <th class="w-10">Module Code</th>
+              <th class="w-15">Primary Reason</th>
+              <th class="w-15">Secondary Reason</th>
+              <th class="w-20">Comments</th>
+              <th class="w-10 text-center">Block</th>
+              <th class="w-10 text-center">Completed</th>
+              <th class="w-10">Disability</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td class="text-center">{{ r.edv_year }}</td>
+              <td class="text-center">{{ r.edv_week }}</td>
+              <td>{{ r.edv_modulecode }}</td>
+              <td>{{ r.edv_primaryreason }}</td>
+              <td>{{ r.edv_secondaryreason }}</td>
+              <td>{{ r.edv_comments }}</td>
+              <td class="text-center">{{ r.edv_block }}</td>
+              <td class="text-center">{% if r.edv_completed %}Yes{% else %}No{% endif %}</td>
+              <td>{{ r.edv_disability }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="muted">No at-risk entries found for this student.</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="hstack gap-2 mt-3">
+    <a href="/academics/" class="btn btn-secondary">Back to Academics</a>
+    <a href="{% url 'students:list' %}" class="btn btn-primary">Students</a>
+  </div>
+</div>
+{% endblock %}
