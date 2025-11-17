@@ -315,6 +315,16 @@ class EmailEvent(models.Model):
 - Rollout/Flags: Deploy code. Optionally install OS deps to enable Fabric: `libodbc1` (unixODBC) and Microsoft ODBC Driver 18 (`msodbcsql18`). Restart app.
 - Links: 
 
+[2025-11-17] Login signal no longer blocks on identity validation
+- Files: `accounts/signals.py`
+- Behavior impact: Successful login no longer runs `validate_parent` synchronously on the `user_logged_in` signal, preventing slow or failing Fabric/Dynamics lookups from delaying or timing out the `/accounts/login/` POST. Identity validation still occurs via the identity lease middleware and on email events (confirm/add/remove/change), so student links continue to refresh outside the critical login path.
+- Data model: none (migration: no)
+- Integrations/Jobs: Fabric/Dynamics validation unchanged, but invoked only from middleware and email-related signals instead of the login signal.
+- Emails/Templates: none
+- Security/Privacy: Identity lease semantics remain: access to student data is still gated by validation; only the timing of when validation occurs has shifted off the interactive login request.
+- Rollout/Flags: Deploy code and restart/reload Gunicorn. No feature flags.
+- Links: 
+
 [2025-11-11] On-demand progress update (preferences action)
 - Files: `accounts/urls.py`, `accounts/views.py`, `templates/accounts/preferences.html`
 - Behavior impact: Parents who opted in can click “Send progress update now” on the Preferences page to queue an immediate digest email (same template as weekly schedule). A confirmation note appears after redirect.

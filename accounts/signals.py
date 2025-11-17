@@ -27,7 +27,6 @@ def on_user_logged_in(sender, request, user, **kwargs):
         EmailAddress.objects.filter(user=user).exclude(
             email=user.email
         ).update(primary=False)
-    validate_parent(user)
 
 
 @receiver(post_save, sender=User)
