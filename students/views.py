@@ -97,7 +97,12 @@ def auto_select_student(request):
         link = (
             ParentStudentLink.objects.select_related("student")
             .filter(user=request.user, active=True)
-            .order_by("student__first_name", "student__last_name", "student__id")
+            .order_by(
+                "-last_verified_at",
+                "student__first_name",
+                "student__last_name",
+                "student__id",
+            )
             .first()
         )
         if link and link.student:
