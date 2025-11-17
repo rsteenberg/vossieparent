@@ -335,6 +335,26 @@ class EmailEvent(models.Model):
 - Rollout/Flags: Deploy code and run `collectstatic` (handled by `deploy.sh`); no feature flags.
 - Links: 
 
+[2025-11-17] RQ worker restart hook in deploy.sh
+- Files: `deploy.sh`
+- Behavior impact: Adds an optional `RQ_WORKER_SERVICES` environment variable. When set to one or more systemd unit names (e.g., `vossie-rq-mail.service`), `deploy.sh` will restart those worker services after reloading the main app service and before running health checks. This keeps background jobs (including mail) in sync with code deployments.
+- Data model: none (migration: no)
+- Integrations/Jobs: Operational only; no change to job code. Assumes separate systemd units for RQ workers.
+- Emails/Templates: none
+- Security/Privacy: None; relies on existing systemd and OS-level access controls.
+- Rollout/Flags: Create and enable systemd unit(s) for RQ workers, then set `RQ_WORKER_SERVICES` in the deploy environment. No feature flags.
+- Links: 
+
+[2025-11-17] Notices digest as on-demand progress email
+- Files: `accounts/views.py`, `jobs/tasks.py`, `config/settings.py`
+- Behavior impact: The “Send progress update now” action on the Preferences page now uses the notices digest campaign/template by default (key `notices_digest`, templates `emails/notices_digest.{html,txt}`), so the on-demand email matches the scheduled notices digest: 7-day window, 4 buckets (personal, student, module, general), up to 5 items per bucket, and links back to the portal. Failures in `send_parent_update` are logged to the `jobs.tasks` logger and sent to admins via email.
+- Data model: none (migration: no)
+- Integrations/Jobs: `send_progress_now` reuses the existing `send_parent_update` RQ job and campaign infrastructure; no new external integrations.
+- Emails/Templates: Reuses `notices_digest` templates for both scheduled and on-demand sends; subject `Your Eduvos notices ({total})`.
+- Security/Privacy: Same as existing digest behavior; announcements are permission-filtered when building buckets, and admin error emails omit sensitive content.
+- Rollout/Flags: Configure `PROGRESS_CAMPAIGN_ID` if overriding the default campaign, ensure `ADMIN_EMAILS` is set so job failures reach admins, and keep at least one RQ worker on the `mail` queue running. No feature flags.
+- Links: 
+
 [2025-11-11] On-demand progress update (preferences action)
 - Files: `accounts/urls.py`, `accounts/views.py`, `templates/accounts/preferences.html`
 - Behavior impact: Parents who opted in can click “Send progress update now” on the Preferences page to queue an immediate digest email (same template as weekly schedule). A confirmation note appears after redirect.

@@ -350,6 +350,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "jobs.tasks": {
+            "handlers": ["console", "mail_admins"],
+            "level": "ERROR",
+            "propagate": False,
+        },
         "django.request": {
             "handlers": ["mail_admins"],
             "level": "ERROR",

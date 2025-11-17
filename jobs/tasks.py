@@ -1,4 +1,3 @@
-import django_rq
 from django_rq import job
 from django.utils import timezone
 from accounts.models import User
@@ -6,6 +5,10 @@ from mailer.models import Campaign
 from mailer.sending import send_email_to_parent
 from content.services import get_notice_buckets_for_user
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 @job("default")
 def kickoff_campaign(campaign_id: int):
@@ -56,4 +59,11 @@ def send_parent_update(campaign_id: int, user_id: int):
         "subject_vars": subject_vars,
         "site_url": settings.SITE_URL,
     }
-    send_email_to_parent(campaign_id, user, context)
+    try:
+        send_email_to_parent(campaign_id, user, context)
+    except Exception:
+        logger.exception(
+            "send_parent_update failed",
+            extra={"campaign_id": campaign_id, "user_id": user_id},
+        )
+        raise

@@ -18,6 +18,7 @@ NGINX_RELOAD="${NGINX_RELOAD:-1}"
 NGINX_SERVICE="${NGINX_SERVICE:-nginx}"
 # Prefer graceful app reload over hard restart (0=restart, 1=reload)
 APP_RELOAD="${APP_RELOAD:-1}"
+RQ_WORKER_SERVICES="${RQ_WORKER_SERVICES:-}"
 # ========== END CONFIG ==========
 
 PY="$VENV_DIR/bin/python"
@@ -84,6 +85,23 @@ reload_nginx_if_enabled() {
       warn "nginx command not found; cannot reload $NGINX_SERVICE"
     fi
   fi
+}
+
+restart_rq_workers() {
+  if [ -z "$RQ_WORKER_SERVICES" ]; then
+    return
+  fi
+  for svc in $RQ_WORKER_SERVICES; do
+    log "Restarting worker service: $svc"
+    systemctl daemon-reload || true
+    if ! systemctl restart "$svc"; then
+      warn "Failed to restart $svc"
+    else
+      if ! systemctl is-active --quiet "$svc"; then
+        warn "Worker service $svc is not active after restart."
+      fi
+    fi
+  done
 }
 
 reload_app_service() {
@@ -181,6 +199,7 @@ main() {
     systemctl is-active --quiet "$SERVICE_NAME" || die "Service not active after restart."
   fi
   systemctl status "$SERVICE_NAME" --no-pager -n 30 || true
+  restart_rq_workers
 
   log "Health checks"
   reload_nginx_if_enabled

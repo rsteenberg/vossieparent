@@ -150,26 +150,28 @@ def send_progress_now(request):
     if cid:
         campaign = Campaign.objects.filter(pk=cid).first()
     if not campaign:
-        campaign = Campaign.objects.filter(template__key="progress_update").first()
+        campaign = Campaign.objects.filter(
+            template__key="notices_digest"
+        ).first()
     if not campaign:
         campaign = Campaign.objects.filter(
-            template__html_template_path="emails/progress_update.html"
+            template__html_template_path="emails/notices_digest.html"
         ).first()
     if not campaign:
         tmpl, _ = EmailTemplate.objects.get_or_create(
-            key="progress_update",
+            key="notices_digest",
             defaults={
-                "subject_template": "Your weekly update",
-                "html_template_path": "emails/progress_update.html",
-                "text_template_path": "",
+                "subject_template": "Your Eduvos notices ({total})",
+                "html_template_path": "emails/notices_digest.html",
+                "text_template_path": "emails/notices_digest.txt",
             },
         )
         campaign, _ = Campaign.objects.get_or_create(
-            name="Progress Update",
+            name="Notices digest",
             defaults={
                 "template": tmpl,
                 "enabled": True,
-                "schedule_cron": "0 8 * * MON",
+                "schedule_cron": "0 7 * * MON",
             },
         )
     MessageLog.objects.filter(campaign=campaign, user=request.user).delete()
