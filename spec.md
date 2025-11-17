@@ -325,6 +325,16 @@ class EmailEvent(models.Model):
 - Rollout/Flags: Deploy code and restart/reload Gunicorn. No feature flags.
 - Links: 
 
+[2025-11-17] Async student auto-selection after dashboard load
+- Files: `students/views.py`, `students/urls.py`, `templates/students/list.html`, `templates/home.html`
+- Behavior impact: Removes the temporary Dynamics demo card from the Students page. After login, the dashboard now makes a background POST to `students/auto-select/` to validate the parent against Fabric/Dynamics and auto-select an active student (first active link) into the session, updating the "Active student" label without blocking page load or the `/accounts/login/` POST.
+- Data model: none (migration: no)
+- Integrations/Jobs: Reuses existing `validate_parent` Fabric/Dynamics flow via a dedicated endpoint instead of during login; no new external integrations.
+- Emails/Templates: none
+- Security/Privacy: Identity checks and Parent↔Student linking still run server-side with the same lease semantics; the new endpoint is `login_required` and CSRF-protected. Only non-sensitive student label text is returned to the browser.
+- Rollout/Flags: Deploy code and run `collectstatic` (handled by `deploy.sh`); no feature flags.
+- Links: 
+
 [2025-11-11] On-demand progress update (preferences action)
 - Files: `accounts/urls.py`, `accounts/views.py`, `templates/accounts/preferences.html`
 - Behavior impact: Parents who opted in can click “Send progress update now” on the Preferences page to queue an immediate digest email (same template as weekly schedule). A confirmation note appears after redirect.

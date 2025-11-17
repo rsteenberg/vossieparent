@@ -1,9 +1,9 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseBadRequest
+from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from .models import ParentStudentLink, Student
-from crm.service import get_contact_by_id
+from crm.service import get_contact_by_id, validate_parent
 from django.conf import settings
 from .permissions import parent_can_view_student
 from .fabric import fetch_contact_by_id as fabric_contact_by_id
@@ -15,29 +15,12 @@ def list_students(request):
         ParentStudentLink.objects.select_related("student")
         .filter(user=request.user, active=True)
     )
-    # Optional: fetch a specific contact details (for demo / debug) if requested or fixed id
-    demo_contact_status = {}
-    if not settings.DYNAMICS_ORG_URL:
-        contact_detail = None
-        demo_contact_status = {
-            "status": "disabled",
-            "message": "Dynamics is not configured (DYNAMICS_ORG_URL is empty).",
-        }
-    else:
-        contact_detail = get_contact_by_id("16b7f729-473c-ee11-bdf4-000d3adf7716")
-        if not contact_detail:
-            demo_contact_status = {
-                "status": "unavailable",
-                "message": "Contact could not be retrieved (permissions, ID, or network).",
-            }
     return render(
         request,
         "students/list.html",
         {
             "links": links,
             "active_nav": "students",
-            "demo_contact": contact_detail,
-            "demo_contact_status": demo_contact_status,
         },
     )
 
@@ -94,3 +77,38 @@ def refresh_links(request):
         pass
     nxt = request.GET.get("next") or reverse("students:list")
     return redirect(nxt)
+
+
+@login_required
+def auto_select_student(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    try:
+        validate_parent(request.user)
+    except Exception:
+        pass
+    sid = request.session.get("active_student_id")
+    student = None
+    if sid:
+        student = Student.objects.filter(id=sid).first()
+        if not student:
+            request.session.pop("active_student_id", None)
+    if not student:
+        link = (
+            ParentStudentLink.objects.select_related("student")
+            .filter(user=request.user, active=True)
+            .order_by("student__first_name", "student__last_name", "student__id")
+            .first()
+        )
+        if link and link.student:
+            student = link.student
+            request.session["active_student_id"] = student.id
+    if not student:
+        return JsonResponse({"ok": False})
+    name = f"{student.first_name} {student.last_name}".strip()
+    if not name:
+        name = f"ID {student.id}"
+    label = f"{name} (ID {student.id})"
+    return JsonResponse(
+        {"ok": True, "student_id": student.id, "student_label": label}
+    )

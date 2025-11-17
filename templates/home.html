@@ -9,7 +9,7 @@
     <div class="hstack between">
       <div>
         <div class="section-title">Welcome, {{ name }}</div>
-        <div class="muted">Active student: {{ student_label }} — <a href="{{ students_list_url }}">Change</a></div>
+        <div class="muted">Active student: <span id="active-student-label">{{ student_label }}</span> — <a href="{{ students_list_url }}">Change</a></div>
       </div>
       <div>
         <a class="tab" href="{{ prefs_url }}">Email preferences</a>
@@ -60,4 +60,46 @@
     </form>
   </div>
 </div>
+<script>
+(function() {
+  if (!window.fetch) {
+    return;
+  }
+  var el = document.getElementById("active-student-label");
+  if (!el) {
+    return;
+  }
+  function getCookie(name) {
+    var parts = document.cookie.split("; ");
+    for (var i = 0; i < parts.length; i++) {
+      var kv = parts[i].split("=");
+      if (kv[0] === name) {
+        return decodeURIComponent(kv[1] || "");
+      }
+    }
+    return "";
+  }
+  var csrftoken = getCookie("csrftoken");
+  fetch("{% url 'students:auto_select' %}", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-CSRFToken": csrftoken
+    },
+    body: "{}"
+  }).then(function(response) {
+    if (!response.ok) {
+      return null;
+    }
+    return response.json();
+  }).then(function(data) {
+    if (!data || !data.ok || !data.student_label) {
+      return;
+    }
+    el.textContent = data.student_label;
+  })["catch"](function() {});
+})();
+</script>
 {% endblock %}
