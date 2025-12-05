@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.contrib import messages
 from .models import ParentStudentLink, Student
 from crm.service import get_contact_by_id, validate_parent
 from django.conf import settings
@@ -28,13 +29,21 @@ def list_students(request):
 def switch_student(request):
     sid = request.GET.get("student_id")
     if not sid:
-        return HttpResponseBadRequest("student_id required")
+        messages.error(request, "No student ID provided.")
+        return redirect("students:list")
+    
     if not parent_can_view_student(request.user, sid):
-        return HttpResponseBadRequest("invalid student")
+        messages.error(request, "Unable to switch to that student. Please ensure they are linked to your profile.")
+        return redirect("students:list")
+        
     request.session["active_student_id"] = int(sid)
+    
+    # Auto-redirect back to where they came from if 'next' is set
     nxt = request.GET.get("next")
     if nxt:
         return redirect(nxt)
+        
+    messages.success(request, f"Switched active student.")
     return redirect("home")
 
 

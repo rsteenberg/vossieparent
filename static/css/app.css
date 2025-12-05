@@ -436,6 +436,7 @@ a:hover {
 }
 
 /* Responsive Adjustments */
+/* Responsive Adjustments */
 @media (max-width: 768px) {
 	.header-inner {
 		flex-wrap: wrap;
@@ -486,6 +487,10 @@ a:hover {
 	.table-responsive-cards td:last-child {
 		border-bottom: none;
 	}
+
+	.footer {
+		padding: 1.5rem 1rem;
+	}
 }
 
 .mobile-menu-btn {
@@ -494,5 +499,68 @@ a:hover {
 	border: none;
 	font-size: 1.5rem;
 	cursor: pointer;
+	color: var(--text-main);
+}
+
+.footer {
+	border-top: 1px solid var(--border-light);
+	background: var(--bg-card);
+	padding: 1.5rem 0;
+	/* Vertical padding only, horizontal handled by inner */
+	margin-top: auto;
+	/* Push to bottom if flex container */
+	color: var(--text-muted);
+	font-size: 0.9rem;
+}
+
+.footer-inner {
+	max-width: 1280px;
+	margin: 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* Centered as requested */
+	gap: 0.5rem;
+	padding: 0 1rem;
+	/* Match layout padding */
+}
+
+.spacer {
+	margin: 0 0.25rem;
+	opacity: 0.5;
+}
+
+.textarea,
+.select {
+	width: 100%;
+	padding: 0.6rem;
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-md);
+	transition: 0.2s;
+	font-family: inherit;
+	background: white;
+}
+
+.textarea:focus,
+.select:focus {
+	outline: none;
+	border-color: var(--brand);
+	box-shadow: 0 0 0 3px var(--brand-glass);
+}
+
+.textarea {
+	min-height: 120px;
+	resize: vertical;
+}
+
+.form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.form-label {
+	font-weight: 500;
+	font-size: 0.9rem;
 	color: var(--text-main);
 }

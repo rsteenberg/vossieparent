@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block page_title %}Access Denied · Eduvos Parent Portal{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 60vh;">
+    <div class="card text-center" style="max-width: 480px; width: 100%; padding: 3rem 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🔒</div>
+        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Access Denied</h1>
+        <p class="muted" style="line-height: 1.6;">You do not have permission to view this page. If you believe this is
+            an error, please contact support.</p>
+
+        <div class="hstack gap-2 mt-3" style="justify-content: center;">
+            <a href="/" class="btn btn-secondary">Go Home</a>
+            <a href="/support/" class="btn btn-primary">Contact Support</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
