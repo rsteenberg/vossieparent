@@ -26,6 +26,8 @@ ALLOWED_HOSTS = [
     for h in os.environ.get("ALLOWED_HOSTS", "*").split(",")
     if h.strip()
 ]
+if "0.0.0.0" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("0.0.0.0")
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
@@ -179,6 +181,23 @@ else:
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": str(BASE_DIR / "db.sqlite3"),
         }
+    }
+
+# Fabric Configuration
+FABRIC_DB = os.environ.get("FABRIC_DB")
+FABRIC_HOST = os.environ.get("FABRIC_HOST")
+if FABRIC_DB and FABRIC_HOST:
+    DATABASES["fabric"] = {
+        "ENGINE": "mssql",
+        "NAME": FABRIC_DB,
+        "HOST": FABRIC_HOST,
+        "PORT": os.environ.get("FABRIC_PORT", "1433"),
+        "USER": os.environ.get("FABRIC_USER", os.environ.get("DYN_CLIENT_ID")),
+        "PASSWORD": os.environ.get("FABRIC_PASSWORD", os.environ.get("DYN_CLIENT_SECRET")),
+        "OPTIONS": {
+            "driver": "ODBC Driver 17 for SQL Server",
+            "extra_params": "Encrypt=yes;TrustServerCertificate=no",
+        },
     }
 
 CACHES = {
