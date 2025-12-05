@@ -5,23 +5,46 @@
   <div class="hstack between">
     <div class="section-title">My Students</div>
     <div>
-      <a class="tab" href="{% url 'students:refresh' %}?next={% url 'students:list' %}">Refresh links</a>
+      <a class="btn btn-secondary text-sm" href="{% url 'students:refresh' %}?next={% url 'students:list' %}">
+        Refresh links
+      </a>
     </div>
   </div>
+
   {% if links %}
-    <ul>
-      {% for link in links %}
-        <li>
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+    {% for link in links %}
+    <div class="card tile"
+      style="flex-direction: column; align-items: start; gap: 1rem; border-left: 4px solid var(--brand);">
+      <div class="vstack gap-1">
+        <div style="font-weight: 700; font-size: 1.1rem;">
           {{ link.student.first_name }} {{ link.student.last_name }}
-          — <a class="tab" href="{% url 'students:switch' %}?student_id={{ link.student.id }}">Select</a>
-          — <a class="tab" href="{% url 'students:switch' %}?student_id={{ link.student.id }}&next={% url 'students:profile' %}">View profile</a>
-          — <a class="tab" href="{% url 'students:switch' %}?student_id={{ link.student.id }}&next={% url 'academics:transcript' %}">View transcript</a>
-        </li>
-      {% endfor %}
-    </ul>
+        </div>
+        <div class="muted text-sm">{{ link.student.external_student_id|default:"Student ID not available" }}</div>
+      </div>
+
+      <div class="hstack gap-2 mt-2" style="width: 100%;">
+        <a class="btn btn-primary" style="flex:1;" href="{% url 'students:switch' %}?student_id={{ link.student.id }}">
+          Select
+        </a>
+        <a class="btn btn-secondary"
+          href="{% url 'students:switch' %}?student_id={{ link.student.id }}&next={% url 'students:profile' %}">
+          Profile
+        </a>
+        <a class="btn btn-secondary"
+          href="{% url 'students:switch' %}?student_id={{ link.student.id }}&next={% url 'academics:transcript' %}">
+          Transcript
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
   {% else %}
+  <div class="card text-center" style="padding: 3rem;">
+    <div style="font-size: 2rem; margin-bottom: 1rem;">🎓</div>
     <div class="muted">No linked students found.</div>
+    <div class="mt-2 text-sm text-light">If you believe this is an error, try refreshing your links.</div>
+  </div>
   {% endif %}
 </div>
 {% endblock %}
-

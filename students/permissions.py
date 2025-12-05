@@ -6,7 +6,7 @@ from .models import ParentStudentLink
 logger = logging.getLogger(__name__)
 
 def parent_can_view_student(user, student_id) -> bool:
-    if not getattr(user, "is_authenticated", False) or not getattr(user, "is_parent", False):
+    if not getattr(user, "is_authenticated", False):
         return False
         
     # Check if Dynamics is configured; if not, we loosely trust local DB for dev/legacy reasons
