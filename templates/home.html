@@ -5,20 +5,24 @@
 
 {% block content %}
 <div class="vstack">
+  <!-- Welcome Card -->
   <div class="card">
     <div class="hstack between">
       <div>
         <div class="section-title">Welcome, {{ name }}</div>
-        <div class="muted">Active student: <span id="active-student-label">{{ student_label }}</span> — <a href="{{ students_list_url }}">Change</a></div>
+        <div class="muted">
+          Active student: <span id="active-student-label" class="badge info">{{ student_label }}</span>
+          <a href="{{ students_list_url }}" class="tab" style="margin-left: 0.5rem; font-size: 0.8rem;">Change</a>
+        </div>
       </div>
       <div>
-        <a class="tab" href="{{ prefs_url }}">Email preferences</a>
-        <a class="tab" href="{% url 'account_email' %}">Manage emails</a>
-        <a class="tab" href="{{ announcements_url }}">Announcements</a>
+        <a class="btn btn-secondary" href="{{ prefs_url }}">Email preferences</a>
+        <a class="btn btn-secondary" href="{{ announcements_url }}">Announcements</a>
       </div>
     </div>
   </div>
 
+  <!-- Quick Actions Tabs (Mobile Scrollable) -->
   <div class="card">
     <div class="tabs">
       <a class="tab" href="{{ academics_url }}">📘 Academics</a>
@@ -27,79 +31,160 @@
       <a class="tab" href="{{ documents_url }}">📂 Documents</a>
       <a class="tab" href="{{ support_url }}">🛟 Support</a>
     </div>
-    <div class="filters mt-3">
-      <select class="select" title="Filter: General"><option>General</option></select>
-      <select class="select" title="Filter: Studies"><option>Studies</option></select>
-      <select class="select" title="Filter: Finances"><option>Finances</option></select>
-      <select class="select" title="Filter: Administration"><option>Administration</option></select>
-      <select class="select" title="Filter: Campus"><option>Campus</option></select>
-      <select class="select" title="Filter: Services"><option>Services</option></select>
-    </div>
   </div>
 
+  <!-- Main Links Grid -->
   <div class="vstack">
-    <div class="section-title">Links</div>
-    <div class="grid">
-      <a class="tile" href="/academics/"><span>📚</span> <span>Modules & grades</span></a>
-      <a class="tile" href="/attendance/"><span>🕒</span> <span>Attendance</span></a>
-      <a class="tile" href="/financials/"><span>🧾</span> <span>Invoices & payments</span></a>
-      <a class="tile" href="/documents/"><span>📄</span> <span>Documents</span></a>
-      <a class="tile" href="/announcements/"><span>📢</span> <span>Notices</span></a>
-      <a class="tile" href="/students/"><span>👪</span> <span>My students</span></a>
-      <a class="tile" href="/parents/preferences/"><span>✉️</span> <span>Email preferences</span></a>
-      <a class="tile" href="/support/"><span>🛟</span> <span>Support</span></a>
+    <div class="hstack between">
+      <div class="section-title" id="links-title">All Services</div>
+      <!-- Search is now in header, but we can add a localized filter status here if needed -->
+    </div>
+
+    <div class="grid" id="searchable-grid">
+      <a class="tile" href="/academics/" data-keywords="grades modules results academics">
+        <div class="tile-icon">📚</div>
+        <div>
+          <div class="tile-title">Modules & Grades</div>
+          <div class="muted" style="font-size: 0.85rem">View academic records</div>
+        </div>
+      </a>
+      <a class="tile" href="/attendance/" data-keywords="attendance time classes">
+        <div class="tile-icon">🕒</div>
+        <div>
+          <div class="tile-title">Attendance</div>
+          <div class="muted" style="font-size: 0.85rem">Check class attendance</div>
+        </div>
+      </a>
+      <a class="tile" href="/financials/" data-keywords="finance money invoice payment balance">
+        <div class="tile-icon">🧾</div>
+        <div>
+          <div class="tile-title">Financials</div>
+          <div class="muted" style="font-size: 0.85rem">View statements & balance</div>
+        </div>
+      </a>
+      <a class="tile" href="/documents/" data-keywords="documents pdf forms contract">
+        <div class="tile-icon">📄</div>
+        <div>
+          <div class="tile-title">Documents</div>
+          <div class="muted" style="font-size: 0.85rem">Download official docs</div>
+        </div>
+      </a>
+      <a class="tile" href="/announcements/" data-keywords="news notices alerts">
+        <div class="tile-icon">📢</div>
+        <div>
+          <div class="tile-title">Notices</div>
+          <div class="muted" style="font-size: 0.85rem">Important updates</div>
+        </div>
+      </a>
+      <a class="tile" href="/students/" data-keywords="student child profile link">
+        <div class="tile-icon">👪</div>
+        <div>
+          <div class="tile-title">My Students</div>
+          <div class="muted" style="font-size: 0.85rem">Manage linked students</div>
+        </div>
+      </a>
+      <a class="tile" href="/parents/preferences/" data-keywords="email settings preferences">
+        <div class="tile-icon">✉️</div>
+        <div>
+          <div class="tile-title">Preferences</div>
+          <div class="muted" style="font-size: 0.85rem">Manage email settings</div>
+        </div>
+      </a>
+      <a class="tile" href="/support/" data-keywords="help support contact">
+        <div class="tile-icon">🛟</div>
+        <div>
+          <div class="tile-title">Support</div>
+          <div class="muted" style="font-size: 0.85rem">Get assistance</div>
+        </div>
+      </a>
+      <a class="tile" href="{% url 'account_email' %}" data-keywords="email account profile">
+        <div class="tile-icon">👤</div>
+        <div>
+          <div class="tile-title">Manage Account</div>
+          <div class="muted" style="font-size: 0.85rem">Update email / profile</div>
+        </div>
+      </a>
+    </div>
+
+    <div id="no-results" class="card text-center d-none">
+      <div class="muted">No services found for your search.</div>
     </div>
   </div>
 
+  <!-- Change Email - Moved to less prominent location (or it's own page via Manage Account tile), but keeping here as a collapsed/smaller card if critical -->
+  <!-- Commented out as we moved logic to 'Manage Account' tile link above for better UX -->
+  <!-- 
   <div class="card">
-    <div class="section-title">Change email</div>
+    <div class="section-title">Change Email Address</div>
     <form method="post" action="{{ change_email_url }}">
       {% csrf_token %}
-      <input type="email" name="new_email" placeholder="new email" required class="input">
-      <button type="submit" class="tab">Start change</button>
+      <div class="hstack">
+        <input type="email" name="new_email" placeholder="New email address" required class="input" style="max-width:300px">
+        <button type="submit" class="btn btn-secondary">Start Request</button>
+      </div>
     </form>
   </div>
+  -->
 </div>
+
 <script>
-(function() {
-  if (!window.fetch) {
-    return;
-  }
-  var el = document.getElementById("active-student-label");
-  if (!el) {
-    return;
-  }
-  function getCookie(name) {
-    var parts = document.cookie.split("; ");
-    for (var i = 0; i < parts.length; i++) {
-      var kv = parts[i].split("=");
-      if (kv[0] === name) {
-        return decodeURIComponent(kv[1] || "");
+  (function () {
+    // 1. Auto-select student logic
+    if (window.fetch) {
+      var el = document.getElementById("active-student-label");
+      if (el) {
+        function getCookie(name) {
+          var parts = document.cookie.split("; ");
+          for (var i = 0; i < parts.length; i++) {
+            var kv = parts[i].split("=");
+            if (kv[0] === name) return decodeURIComponent(kv[1] || "");
+          }
+          return "";
+        }
+        var csrftoken = getCookie("csrftoken");
+        fetch("{% url 'students:auto_select' %}", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": csrftoken },
+          body: "{}"
+        }).then(res => res.ok ? res.json() : null).then(data => {
+          if (data && data.ok && data.student_label) {
+            el.textContent = data.student_label;
+          }
+        }).catch(e => { });
       }
     }
-    return "";
-  }
-  var csrftoken = getCookie("csrftoken");
-  fetch("{% url 'students:auto_select' %}", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest",
-      "X-CSRFToken": csrftoken
-    },
-    body: "{}"
-  }).then(function(response) {
-    if (!response.ok) {
-      return null;
+
+    // 2. Client-side Search Logic
+    const searchInput = document.getElementById('global-search');
+    const grid = document.getElementById('searchable-grid');
+    const noResults = document.getElementById('no-results');
+
+    if (searchInput && grid) {
+      const tiles = grid.querySelectorAll('.tile');
+
+      searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        let visibleCount = 0;
+
+        tiles.forEach(tile => {
+          const text = tile.innerText.toLowerCase();
+          const keywords = tile.getAttribute('data-keywords') || '';
+          const match = text.includes(term) || keywords.includes(term);
+
+          tile.style.display = match ? 'flex' : 'none';
+          if (match) visibleCount++;
+        });
+
+        if (visibleCount === 0) {
+          grid.style.display = 'none';
+          noResults.classList.remove('d-none');
+        } else {
+          grid.style.display = 'grid';
+          noResults.classList.add('d-none');
+        }
+      });
     }
-    return response.json();
-  }).then(function(data) {
-    if (!data || !data.ok || !data.student_label) {
-      return;
-    }
-    el.textContent = data.student_label;
-  })["catch"](function() {});
-})();
+  })();
 </script>
 {% endblock %}

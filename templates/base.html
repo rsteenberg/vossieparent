@@ -1,36 +1,67 @@
 {% load static %}
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block page_title %}Eduvos Parent Portal{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
+  <!-- Icons Sprite -->
+  <svg class="d-none">
+    <symbol id="icon-search" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd"
+        d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+        clip-rule="evenodd" />
+    </symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </symbol>
+  </svg>
+
   <header class="header">
     <div class="header-inner">
-  <div class="brand"><a href="{% url 'home' %}" aria-label="Go to home">Eduvos Parent Portal</a></div>
-      <div class="search">
-        <input type="search" placeholder="Search links..."/>
+      <button class="mobile-menu-btn" id="menu-toggle" aria-label="Toggle menu">
+        <svg class="w-6 h-6" width="24" height="24">
+          <use href="#icon-menu"></use>
+        </svg>
+      </button>
+
+      <div class="brand">
+        <a href="{% url 'home' %}" aria-label="Go to home">Eduvos Parent Portal</a>
       </div>
-      <div>
-        <button class="btn lang">English ▾</button>
+
+      <div class="search-container">
+        <svg class="search-icon">
+          <use href="#icon-search"></use>
+        </svg>
+        <input type="search" class="search-input" placeholder="Search portal..." id="global-search" />
       </div>
+
       <div class="hstack actions">
         {% if user.is_authenticated %}
-          <a class="tab" href="{% url 'home' %}">Home</a>
-          <a class="tab" href="{% url 'account_logout' %}">Logout</a>
+        <a class="tab" href="{% url 'home' %}">Home</a>
+        <a class="tab" href="{% url 'account_logout' %}">Logout</a>
         {% else %}
-          <a class="tab" href="{% url 'account_login' %}">Login</a>
-          <a class="tab" href="{% url 'account_signup' %}">Register</a>
+        <a class="tab" href="{% url 'account_login' %}">Login</a>
+        <a class="tab" href="{% url 'account_signup' %}">Register</a>
         {% endif %}
       </div>
     </div>
   </header>
+
   <div class="layout{% if not user.is_authenticated %} unauth{% endif %}">
     {% if user.is_authenticated %}
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       {% block sidebar %}
       <nav class="side-nav">
         <a href="/" class="side-link{% if active_nav == 'dashboard' %} active{% endif %}">Dashboard</a>
@@ -38,18 +69,31 @@
         <a href="/attendance/" class="side-link{% if active_nav == 'attendance' %} active{% endif %}">Attendance</a>
         <a href="/financials/" class="side-link{% if active_nav == 'financials' %} active{% endif %}">Financials</a>
         <a href="/documents/" class="side-link{% if active_nav == 'documents' %} active{% endif %}">Documents</a>
-        <a href="/announcements/" class="side-link{% if active_nav == 'announcements' %} active{% endif %}">Announcements</a>
+        <a href="/announcements/"
+          class="side-link{% if active_nav == 'announcements' %} active{% endif %}">Announcements</a>
         <a href="/students/" class="side-link{% if active_nav == 'students' %} active{% endif %}">Students</a>
         <a href="/support/" class="side-link{% if active_nav == 'support' %} active{% endif %}">Support</a>
-        <a href="/parents/preferences/" class="side-link{% if active_nav == 'preferences' %} active{% endif %}">Email preferences</a>
+        <a href="/parents/preferences/" class="side-link{% if active_nav == 'preferences' %} active{% endif %}">Email
+          preferences</a>
       </nav>
       {% endblock %}
     </aside>
     {% endif %}
+
     <main class="content">
+      {% if messages %}
+      <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>
+
   <footer class="footer">
     <div class="footer-inner">
       <span>&copy; {% now "Y" %} Eduvos</span>
@@ -59,5 +103,20 @@
       <a href="{% url 'content:privacy' %}">Privacy Policy</a>
     </div>
   </footer>
+
+  <script>
+    // Simple UI Script for Mobile Menu
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      if (toggle && sidebar) {
+        toggle.addEventListener('click', () => {
+          const isHidden = sidebar.style.display === 'none' || getComputedStyle(sidebar).display === 'none';
+          sidebar.style.display = isHidden ? 'block' : 'none';
+        });
+      }
+    });
+  </script>
 </body>
+
 </html>
