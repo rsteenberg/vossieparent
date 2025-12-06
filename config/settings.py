@@ -195,7 +195,7 @@ if FABRIC_DB and FABRIC_HOST:
         "USER": os.environ.get("FABRIC_USER", os.environ.get("DYN_CLIENT_ID")),
         "PASSWORD": os.environ.get("FABRIC_PASSWORD", os.environ.get("DYN_CLIENT_SECRET")),
         "OPTIONS": {
-            "driver": "ODBC Driver 17 for SQL Server",
+            "driver": os.environ.get("FABRIC_DRIVER", "ODBC Driver 18 for SQL Server"),
             "extra_params": "Encrypt=yes;TrustServerCertificate=no",
         },
     }
