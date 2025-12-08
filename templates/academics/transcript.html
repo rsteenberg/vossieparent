@@ -4,115 +4,115 @@
 <div class="vstack">
   <div class="hstack between">
     <div class="section-title">Academic Transcript</div>
-    <div class="muted text-sm">Official record</div>
   </div>
+  <div class="muted text-sm">Official record</div>
+</div>
 
-  {% if no_student %}
-  <div class="card text-center">
-    <div class="vstack" style="align-items: center; padding: 2rem 0;">
-      <div style="font-size: 3rem;">🎓</div>
-      <div class="muted">No student is linked yet. Link a student to view the academic transcript.</div>
-      <div class="mt-2">
-        <a href="{% url 'students:list' %}" class="btn btn-primary">Link a student</a>
-      </div>
+{% if no_student %}
+<div class="card text-center">
+  <div class="vstack" style="align-items: center; padding: 2rem 0;">
+    <div style="font-size: 3rem;">🎓</div>
+    <div class="muted">No student is linked yet. Link a student to view the academic transcript.</div>
+    <div class="mt-2">
+      <a href="{% url 'students:list' %}" class="btn btn-primary">Link a student</a>
     </div>
   </div>
-  {% else %}
-  <!-- Student Details Card -->
-  <div class="card">
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); row-gap: 1rem;">
-      <div>
-        <div class="muted text-sm">Student Name</div>
-        <div style="font-weight: 600;">{{ header.name|default:"-" }}</div>
-      </div>
-      <div>
-        <div class="muted text-sm">Student Number</div>
-        <div>{{ header.student_number|default:"-" }}</div>
-      </div>
-      <div>
-        <div class="muted text-sm">Program Status</div>
-        <div><span class="badge info">{{ header.program_status|default:"Active" }}</span></div>
-      </div>
-      <div style="grid-column: 1 / -1;">
-        <div class="muted text-sm">Program Name</div>
-        <div style="font-weight: 600;">{{ header.program_name|default:"-" }}</div>
-      </div>
+</div>
+{% else %}
+<!-- Student Details Card -->
+<div class="card">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); row-gap: 1rem;">
+    <div>
+      <div class="muted text-sm">Student Name</div>
+      <div style="font-weight: 600;">{{ header.name|default:"-" }}</div>
+    </div>
+    <div>
+      <div class="muted text-sm">Student Number</div>
+      <div>{{ header.student_number|default:"-" }}</div>
+    </div>
+    <div>
+      <div class="muted text-sm">Program Status</div>
+      <div><span class="badge info">{{ header.program_status|default:"Active" }}</span></div>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="muted text-sm">Program Name</div>
+      <div style="font-weight: 600;">{{ header.program_name|default:"-" }}</div>
     </div>
   </div>
+</div>
 
-  <!-- Transcript Table -->
-  <div class="card" style="padding: 0; overflow: hidden;">
-    <div class="table-container">
-      <table class="table table-striped table-hover table-responsive-cards" id="dataTable">
-        <thead>
-          <tr>
-            <th class="w-10 text-center">Year</th>
-            <th class="w-10">Module Code</th>
-            <th class="w-15">Course</th>
-            <th class="w-10 text-center">Formative</th>
-            <th class="w-10 text-center">Summative</th>
-            <th class="w-10 text-center">Final</th>
-            <th class="w-10">Result</th>
-            <th class="w-15">Status</th>
-            <th class="w-10">Module</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for ev in np_rows %}
-          <tr>
-            <td class="text-center" data-label="Year">{{ ev.bt_academicyear }}</td>
-            <td data-label="Code">{{ ev.pr__msdyn_productnumber }}</td>
-            <td data-label="Course">{{ ev.mshied_name }}</td>
-            <td class="text-center" colspan="6" data-label="Status"><span class="badge warning">Not Published</span>
-            </td>
-          </tr>
-          {% endfor %}
+<!-- Transcript Table -->
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div class="table-container">
+    <table class="table table-striped table-hover table-responsive-cards" id="dataTable">
+      <thead>
+        <tr>
+          <th class="w-10 text-center">Year</th>
+          <th class="w-10">Module Code</th>
+          <th class="w-15">Course</th>
+          <th class="w-10 text-center">Formative</th>
+          <th class="w-10 text-center">Summative</th>
+          <th class="w-10 text-center">Final</th>
+          <th class="w-10">Result</th>
+          <th class="w-15">Status</th>
+          <th class="w-10">Module</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in np_rows %}
+        <tr>
+          <td class="text-center" data-label="Year">{{ ev.bt_academicyear }}</td>
+          <td data-label="Code">{{ ev.pr__msdyn_productnumber }}</td>
+          <td data-label="Course">{{ ev.mshied_name }}</td>
+          <td class="text-center" colspan="6" data-label="Status"><span class="badge warning">Not Published</span>
+          </td>
+        </tr>
+        {% endfor %}
 
-          {% for ev in fb_rows %}
-          <tr>
-            <td class="text-center" data-label="Year">{{ ev.bt_academicyear }}</td>
-            <td data-label="Code">{{ ev.pr__msdyn_productnumber }}</td>
-            <td data-label="Course">{{ ev.mshied_name }}</td>
-            {% if ev.bt_publishedresultcode__label == "SUP" %}
-            <td class="text-center" colspan="3" data-label="Grades"><i>Fin Blocked</i></td>
-            <td data-label="Result">{{ ev.bt_publishedresultcode__label }}</td>
-            <td data-label="Status">Sup Exam</td>
-            <td data-label="Module"><span class="badge danger">Fin Blocked</span></td>
-            {% else %}
-            <td class="text-center" colspan="6" data-label="Status"><span class="badge danger">Fin Blocked</span></td>
-            {% endif %}
-          </tr>
-          {% endfor %}
-
-          {% for ev in p_rows %}
-          <tr>
-            <td class="text-center" data-label="Year">{{ ev.bt_academicyear }}</td>
-            <td data-label="Code">{{ ev.pr__msdyn_productnumber }}</td>
-            <td data-label="Course">{{ ev.mshied_name }}</td>
-            <td class="text-center" data-label="Formative">{{ ev.bt_publishedsemesteraverage|floatformat:0 }}</td>
-            <td class="text-center" data-label="Summative">{{ ev.bt_publishedexamaverage|floatformat:0 }}</td>
-            <td class="text-center" data-label="Final" style="font-weight: 700;">{{
-              ev.bt_publishedfinalaverage|floatformat:0 }}</td>
-            <td data-label="Result">{{ ev.bt_publishedresultcode__label }}</td>
-            <td data-label="Status">{{ ev.bt_publishedresultstatus__label }}</td>
-            <td data-label="Module">{{ ev.bt_publishedmodulestatus__label }}</td>
-          </tr>
-          {% empty %}
-          {% if not np_rows and not fb_rows %}
-          <tr>
-            <td colspan="9" class="text-center muted" style="padding: 2rem;">No transcript records found for this
-              student.</td>
-          </tr>
+        {% for ev in fb_rows %}
+        <tr>
+          <td class="text-center" data-label="Year">{{ ev.bt_academicyear }}</td>
+          <td data-label="Code">{{ ev.pr__msdyn_productnumber }}</td>
+          <td data-label="Course">{{ ev.mshied_name }}</td>
+          {% if ev.bt_publishedresultcode__label == "SUP" %}
+          <td class="text-center" colspan="3" data-label="Grades"><i>Fin Blocked</i></td>
+          <td data-label="Result">{{ ev.bt_publishedresultcode__label }}</td>
+          <td data-label="Status">Sup Exam</td>
+          <td data-label="Module"><span class="badge danger">Fin Blocked</span></td>
+          {% else %}
+          <td class="text-center" colspan="6" data-label="Status"><span class="badge danger">Fin Blocked</span></td>
           {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
+        </tr>
+        {% endfor %}
 
-  <div class="hstack gap-2 mt-3">
-    <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+        {% for ev in p_rows %}
+        <tr>
+          <td class="text-center" data-label="Year">{{ ev.bt_academicyear }}</td>
+          <td data-label="Code">{{ ev.pr__msdyn_productnumber }}</td>
+          <td data-label="Course">{{ ev.mshied_name }}</td>
+          <td class="text-center" data-label="Formative">{{ ev.bt_publishedsemesteraverage|floatformat:0 }}</td>
+          <td class="text-center" data-label="Summative">{{ ev.bt_publishedexamaverage|floatformat:0 }}</td>
+          <td class="text-center" data-label="Final">{{ ev.bt_publishedfinalaverage|floatformat:0 }}</td>
+          <td data-label="Result">{{ ev.bt_publishedresultcode__label }}</td>
+          <td data-label="Status">{{ ev.bt_publishedresultstatus__label }}</td>
+          <td data-label="Module">{{ ev.bt_publishedmodulestatus__label }}</td>
+        </tr>
+        {% empty %}
+        {% if not np_rows and not fb_rows %}
+        <tr>
+          <td colspan="9" class="text-center muted" style="padding: 2rem;">No transcript records found for this
+            student.</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+</div>
+{% endif %}
+
+<div class="hstack gap-2 mt-3">
+  <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
 </div>
 {% endblock %}

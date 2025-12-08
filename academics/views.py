@@ -108,7 +108,6 @@ def transcript(request):
                  "reason": "Financial Block"
              })
 
-
     f1 = (
         "<fetch distinct=\"true\">"
         "  <entity name=\"mshied_academicperioddetails\">"
