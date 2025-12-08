@@ -82,6 +82,33 @@ def transcript(request):
     if not parent_can_view_student(request.user, student.id):
         return HttpResponseForbidden("forbidden")
 
+    # Check for financial block
+    contact = None
+    if student.external_student_id:
+        try:
+             # Try local DB first (via model or fabric.py logic)
+             if "fabric" in settings.DATABASES:
+                 contact = fabric_contact_by_id(student.external_student_id)
+        except Exception:
+            pass
+        if not contact and getattr(settings, "DYNAMICS_ORG_URL", ""):
+            try:
+                # Fallback to CRM service (which also checks local DB now)
+                contact = get_contact_by_id(student.external_student_id)
+            except Exception:
+                pass
+    
+    if contact:
+        # Check btfo_financeblock (boolean) or lk_bt_custonholdblocked (status)
+        fin_block = contact.get("btfo_financeblock")
+        if fin_block is True or str(fin_block).lower() == "true":
+             return render(request, "academics/transcript_blocked.html", {
+                 "active_nav": "academics",
+                 "student": student,
+                 "reason": "Financial Block"
+             })
+
+
     f1 = (
         "<fetch distinct=\"true\">"
         "  <entity name=\"mshied_academicperioddetails\">"

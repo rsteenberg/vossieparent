@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block page_title %}Academic Transcript · Eduvos Parent Portal{% endblock %}
+
+{% block content %}
+<div class="vstack">
+    <div class="hstack between">
+        <div class="section-title">Academic Transcript</div>
+        <div class="muted text-sm">Restricted Access</div>
+    </div>
+
+    <div class="card text-center mt-4">
+        <div class="vstack" style="align-items: center; padding: 3rem 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+            <h3 class="mb-2">Access Restricted</h3>
+            <div class="muted" style="max-width: 500px; margin: 0 auto;">
+                The academic transcript for <strong>{{ student.first_name }} {{ student.last_name }}</strong> cannot be
+                viewed due to a financial block specifically related to outstanding fees.
+            </div>
+            <div class="mt-4">
+                <a href="{% url 'financials:index' %}" class="btn btn-primary">View Financials</a>
+                <a href="{% url 'academics:index' %}" class="btn btn-secondary ms-2">Back to Academics</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
