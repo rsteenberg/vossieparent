@@ -86,7 +86,7 @@ ACCOUNT_SESSION_REMEMBER = None
 ACCOUNT_ADAPTER = "accounts.adapter.DevAccountAdapter"
 ACCOUNT_RATE_LIMITS = {
     "login": "10/m/ip",
-    "login_failed": "5/10m/key",
+    "login_failed": "5/2m/key",
     "reset_password": "20/m/ip,5/m/key",
     "signup": "10/m/ip",
 }
@@ -337,7 +337,7 @@ LOGGING = {
 
 AXES_ENABLED = True
 AXES_FAILURE_LIMIT = 5
-AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_COOLOFF_TIME = timedelta(minutes=2)
 AXES_LOCK_OUT_AT_FAILURE = True
 AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
 AXES_RESET_ON_SUCCESS = True

@@ -1,6 +1,7 @@
 from django.db import connections
 from django.utils import timezone
 from django.conf import settings
+from django.db.models import Q
 from allauth.account.models import EmailAddress
 import logging
 import msal
@@ -30,6 +31,13 @@ def fetch_contact_by_id(contact_id: str):
     if not contact_id:
         return None
     try:
+        from crm.models import Contact
+        c = Contact.objects.filter(contact_id=contact_id).first()
+        if c:
+            return c.raw_data
+    except Exception:
+        pass
+    try:
         for sch, tbl in _candidate_tables():
             sql = (
                 f"SELECT TOP 1 * FROM [{sch}].[{tbl}] "
@@ -57,6 +65,18 @@ def fetch_contacts_by_sponsor_email(email: str, limit: int = 100):
     if not email:
         return []
     e = (email or "").strip().lower()
+    
+    try:
+        from crm.models import Contact
+        qs = Contact.objects.filter(
+            Q(sponsor1_email__iexact=e) | Q(sponsor2_email__iexact=e) |
+            Q(email__iexact=e)  # Also check direct email just in case
+        )
+        if qs.exists():
+            return [c.raw_data for c in qs[:limit]]
+    except Exception:
+        pass
+
     # Try direct pyodbc first to avoid Django DB connection attribute issues
     for sch, tbl in _candidate_tables():
         cols = _available_sponsor_columns(sch, tbl)

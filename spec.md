@@ -72,7 +72,9 @@ argon2-cffi (password hasher)
 django-axes (optional: lockouts/rate limiting)
 
 3) Settings (snippets)
+
 # settings.py
+
 INSTALLED_APPS += [
     "django.contrib.sites",
     "allauth", "allauth.account",
@@ -87,6 +89,7 @@ AUTH_USER_MODEL = "accounts.User"  # custom user; see models below
 SITE_ID = 1
 
 # Allauth: email-first, verify on signup and email change
+
 ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
@@ -94,30 +97,35 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 LOGIN_REDIRECT_URL = "/"
 
 # Argon2 for strong password hashing
+
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.Argon2PasswordHasher"]
 
 # RQ
+
 RQ_QUEUES = {
     "default": {"HOST": "localhost", "PORT": 6379, "DB": 0, "DEFAULT_TIMEOUT": 600},
     "mail":    {"HOST": "localhost", "PORT": 6379, "DB": 0, "DEFAULT_TIMEOUT": 600},
 }
-# If you use rq-scheduler, run its separate process and point it at the same Redis.
+
+# If you use rq-scheduler, run its separate process and point it at the same Redis
 
 # Anymail (example for SendGrid; swap for your ESP)
+
 ANYMAIL = {"SENDGRID_API_KEY": os.environ.get("SENDGRID_API_KEY")}
 EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
 DEFAULT_FROM_EMAIL = "School <no-reply@school.example>"
 
 # Dynamics / Dataverse (server-to-server)
+
 DYNAMICS_TENANT_ID = os.environ["DYN_TENANT_ID"]
 DYNAMICS_CLIENT_ID = os.environ["DYN_CLIENT_ID"]
 DYNAMICS_CLIENT_SECRET = os.environ["DYN_CLIENT_SECRET"]
-DYNAMICS_ORG_URL = os.environ["DYN_ORG_URL"]  # e.g., https://org.crm.dynamics.com
+DYNAMICS_ORG_URL = os.environ["DYN_ORG_URL"]  # e.g., <https://org.crm.dynamics.com>
 DYNAMICS_SCOPE = f"{os.environ['DYN_ORG_URL']}/.default"
 
 # Identity lease
-IDENTITY_LEASE_TTL_SECONDS = 3600  # 1 hour
 
+IDENTITY_LEASE_TTL_SECONDS = 3600  # 1 hour
 
 urls.py:
 
@@ -130,7 +138,9 @@ urlpatterns = [
 ]
 
 4) Data model (core)
+
 # accounts/models.py
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -163,6 +173,7 @@ class EmailChangeRequest(models.Model):
     expires_at = models.DateTimeField()
 
 # students/models.py
+
 class Student(models.Model):
     external_student_id = models.CharField(max_length=64, unique=True)  # Dataverse id
     first_name = models.CharField(max_length=64)
@@ -179,6 +190,7 @@ class ParentStudentLink(models.Model):
         unique_together = [("user", "student")]
 
 # mailer/models.py
+
 from django.db import models
 
 class EmailTemplate(models.Model):
@@ -191,7 +203,7 @@ class Campaign(models.Model):
     name = models.CharField(max_length=128)
     template = models.ForeignKey(EmailTemplate, on_delete=models.PROTECT)
     enabled = models.BooleanField(default=False)
-    schedule_cron = models.CharField(max_length=64)  # e.g., "0 8 * * MON"
+    schedule_cron = models.CharField(max_length=64)  # e.g., "0 8 ** MON"
     last_run_at = models.DateTimeField(blank=True, null=True)
 
 class EmailEvent(models.Model):
@@ -207,6 +219,7 @@ class EmailEvent(models.Model):
 
 [2025-10-30] Dynamics token failure handling (no login crash)
 [2025-11-10] Dynamics contact diagnostics & logging
+
 - [2025-11-11] Host header hardening & DisallowedHost noise reduction
 - Files: `deploy/nginx/parent.vossie.net.conf`, `config/settings.py`
 - Behavior impact: Unknown Host traffic is dropped at Nginx (never reaches Django); admin email noise from DisallowedHost is suppressed while other security emails remain.
@@ -215,17 +228,18 @@ class EmailEvent(models.Model):
 - Emails/Templates: admin email routing updated for DisallowedHost only (suppressed)
 - Security/Privacy: Added Nginx default_server catch-alls (80→444, 443→TLS reject) and overwrite `X-Forwarded-For` with `$remote_addr` to prevent client spoofing. Keep `ALLOWED_HOSTS` minimal and set `USE_X_FORWARDED_PROTO=1` in prod. Ensure `CSRF_TRUSTED_ORIGINS` and `SITE_URL` only include real origins (remove Outlook Safe Links).
 - Rollout/Flags: Deploy Nginx config and reload; set env vars in prod: `ALLOWED_HOSTS=parent.vossie.net`, `USE_X_FORWARDED_PROTO=1`, `CSRF_TRUSTED_ORIGINS=https://parent.vossie.net`, `SITE_URL=https://parent.vossie.net`.
- - Links: 
-  - Files: `crm/msal_client.py`, `crm/service.py`, `jobs/management/commands/test_dynamics_contact.py`
-  - Behavior impact: Adds clearer error logging for token/config and HTTP failures; provides a management command to diagnose why a contact cannot be retrieved (auth, 404, permissions, configuration). Normal user-visible behavior unchanged except easier ops troubleshooting.
-  - Data model: none (migration: no)
-  - Integrations/Jobs: new management command `test_dynamics_contact` for on-demand CRM checks.
-  - Emails/Templates: none
-  - Security/Privacy: Logs exclude secrets; only status codes and truncated response bodies (<=500 chars). Safe error surfaces for admins.
-  - Rollout/Flags: Run `python manage.py test_dynamics_contact --id <guid>` in production to verify CRM connectivity; no flag.
-  - Links: 
+- Links:
+- Files: `crm/msal_client.py`, `crm/service.py`, `jobs/management/commands/test_dynamics_contact.py`
+- Behavior impact: Adds clearer error logging for token/config and HTTP failures; provides a management command to diagnose why a contact cannot be retrieved (auth, 404, permissions, configuration). Normal user-visible behavior unchanged except easier ops troubleshooting.
+- Data model: none (migration: no)
+- Integrations/Jobs: new management command `test_dynamics_contact` for on-demand CRM checks.
+- Emails/Templates: none
+- Security/Privacy: Logs exclude secrets; only status codes and truncated response bodies (<=500 chars). Safe error surfaces for admins.
+- Rollout/Flags: Run `python manage.py test_dynamics_contact --id <guid>` in production to verify CRM connectivity; no flag.
+- Links:
 
 [2025-11-11] Academics transcript (Dynamics FetchXML view)
+
 - Files: `crm/service.py`, `academics/views.py`, `academics/urls.py`, `templates/academics/transcript.html`
 - Behavior impact: New Academics page at `/academics/transcript/` shows student transcript header and module rows, mirroring the previous portal Liquid logic (Not Published, Fin blocked, Published) based on Dataverse fields. Uses the selected student from session or accepts `?contactid=` GUID.
 - Data model: none (migration: no)
@@ -233,9 +247,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Guarded by `parent_can_view_student()` and identity lease. No secrets in templates. Server-side Dynamics calls only.
 - Rollout/Flags: Ensure `DYN_*` env vars set (tenant, client, secret, org URL). Link page from Academics nav if desired. Optionally extend to support multi-program transcripts.
-- Links: 
+- Links:
 
 [2025-11-11] Academics transcript links (UI)
+
 - Files: `templates/students/list.html`, `templates/academics/index.html`
 - Behavior impact: Added “View transcript” links. From Students list, uses switch-and-next to set active linked student and redirect to `/academics/transcript/`. From Academics index, shows a button when a student is selected. Linked student ID (local) drives session; external ID is resolved server-side.
 - Data model: none (migration: no)
@@ -243,9 +258,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Access still guarded by `parent_can_view_student()`; no exposure of secrets.
 - Rollout/Flags: None
-- Links: 
+- Links:
 
 [2025-11-11] Transcript styling improvements
+
 - Files: `static/css/app.css`, `templates/academics/transcript.html`
 - Behavior impact: Added bordered (lined) tables, striped/hover states, and centered Year + score columns. Removed inline widths; replaced with utility classes. Header summary table remains left-aligned for readability.
 - Data model: none (migration: no)
@@ -253,9 +269,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: none
 - Rollout/Flags: In production, run collectstatic so updated CSS is served.
-- Links: 
+- Links:
 
 [2025-11-16] Academics at-risk (Fabric view)
+
 - Files: `students/fabric.py`, `academics/views.py`, `academics/urls.py`, `templates/academics/index.html`, `templates/academics/atrisk.html`
 - Behavior impact: New Academics page at `/academics/atrisk/` shows at-risk flags from the Fabric `atrisk` table for the selected student. Accessible from the Academics page once a student is active.
 - Data model: none (migration: no)
@@ -263,9 +280,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Guarded by `parent_can_view_student()` and identity lease; only parents linked to the student can view entries.
 - Rollout/Flags: Ensure `DATABASES['fabric']` is configured and set `FABRIC_ATRISK_TABLE` if the table name/schema differs from `PP.atrisk`. No feature flag.
-- Links: 
+- Links:
 
 [2025-11-16] Academics tiles & no-student CTAs
+
 - Files: `templates/academics/index.html`, `templates/academics/transcript.html`, `templates/academics/atrisk.html`, `academics/views.py`
 - Behavior impact: Academics index shows Transcript and At Risk as large tiles instead of small buttons, and both Transcript and At Risk pages show a friendly message with a "Link a student" button when no active student is selected instead of an error response.
 - Data model: none (migration: no)
@@ -273,9 +291,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: unchanged; views still guarded by `parent_can_view_student()` and identity lease.
 - Rollout/Flags: No flags; deploy templates and views.
-- Links: 
+- Links:
 
 [2025-11-16] Academics header student label
+
 - Files: `academics/views.py`, `templates/academics/index.html`
 - Behavior impact: Academics header now shows the active student's first name, last name, and student number (when available from Fabric/Dynamics) instead of just an internal student ID.
 - Data model: none (migration: no)
@@ -283,9 +302,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: unchanged; access still limited by `parent_can_view_student()` and identity lease.
 - Rollout/Flags: No flags; ensure Fabric/Dynamics configs are valid so student numbers resolve where expected.
-- Links: 
+- Links:
 
 [2025-11-11] Financials balance snapshot
+
 - Files: `crm/service.py`, `financials/views.py`, `templates/financials/index.html`
 - Behavior impact: Financials page shows the outstanding balance for the selected student, using the student's linked Dataverse contact's bt_collectionbalance. Message mirrors legacy portal behavior: "Current Payment Due" when >= 0, else "Currently no payment due".
 - Data model: none (migration: no)
@@ -293,9 +313,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Access guarded by `parent_can_view_student()`; no secrets in templates; Dynamics token usage remains server-side.
 - Rollout/Flags: Ensure Dynamics env vars set; optional Fabric DB for faster reads. No flags.
-- Links: 
+- Links:
 
 [2025-11-11] Fabric ODBC driver 18 + allauth cleanup
+
 - Files: `config/settings.py`
 - Behavior impact: Fixes Fabric DB pyodbc error (Invalid connection string attribute) by switching to "ODBC Driver 18 for SQL Server" and using ActiveDirectoryServicePrincipal auth. Keeps Fabric enabled in dev. Removes deprecated allauth setting to silence system check warning.
 - Data model: none (migration: no)
@@ -303,9 +324,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Enforces encrypted connection (Encrypt=yes; TrustServerCertificate=no) for Fabric.
 - Rollout/Flags: Install Microsoft ODBC Driver 18 for SQL Server on hosts. Restart app. No flags.
-- Links: 
+- Links:
 
 [2025-11-11] Fabric lazy pyodbc import (no startup crash)
+
 - Files: `students/fabric.py`
 - Behavior impact: When ODBC libraries are missing (e.g., libodbc.so.2), the app no longer crashes at import time. Fabric-backed lookups gracefully disable and log a warning; other portal features remain available.
 - Data model: none (migration: no)
@@ -313,9 +335,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: none
 - Rollout/Flags: Deploy code. Optionally install OS deps to enable Fabric: `libodbc1` (unixODBC) and Microsoft ODBC Driver 18 (`msodbcsql18`). Restart app.
-- Links: 
+- Links:
 
 [2025-11-17] Login signal no longer blocks on identity validation
+
 - Files: `accounts/signals.py`
 - Behavior impact: Successful login no longer runs `validate_parent` synchronously on the `user_logged_in` signal, preventing slow or failing Fabric/Dynamics lookups from delaying or timing out the `/accounts/login/` POST. Identity validation still occurs via the identity lease middleware and on email events (confirm/add/remove/change), so student links continue to refresh outside the critical login path.
 - Data model: none (migration: no)
@@ -323,9 +346,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Identity lease semantics remain: access to student data is still gated by validation; only the timing of when validation occurs has shifted off the interactive login request.
 - Rollout/Flags: Deploy code and restart/reload Gunicorn. No feature flags.
-- Links: 
+- Links:
 
 [2025-11-17] Async student auto-selection after dashboard load
+
 - Files: `students/views.py`, `students/urls.py`, `templates/students/list.html`, `templates/home.html`
 - Behavior impact: Removes the temporary Dynamics demo card from the Students page. After login, the dashboard now makes a background POST to `students/auto-select/` to validate the parent against Fabric/Dynamics and auto-select an active student (first active link) into the session, updating the "Active student" label without blocking page load or the `/accounts/login/` POST.
 - Data model: none (migration: no)
@@ -333,9 +357,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: Identity checks and Parent↔Student linking still run server-side with the same lease semantics; the new endpoint is `login_required` and CSRF-protected. Only non-sensitive student label text is returned to the browser.
 - Rollout/Flags: Deploy code and run `collectstatic` (handled by `deploy.sh`); no feature flags.
-- Links: 
+- Links:
 
 [2025-11-17] RQ worker restart hook in deploy.sh
+
 - Files: `deploy.sh`
 - Behavior impact: Adds an optional `RQ_WORKER_SERVICES` environment variable. When set to one or more systemd unit names (e.g., `vossie-rq-mail.service`), `deploy.sh` will restart those worker services after reloading the main app service and before running health checks. This keeps background jobs (including mail) in sync with code deployments.
 - Data model: none (migration: no)
@@ -343,9 +368,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: None; relies on existing systemd and OS-level access controls.
 - Rollout/Flags: Create and enable systemd unit(s) for RQ workers, then set `RQ_WORKER_SERVICES` in the deploy environment. No feature flags.
-- Links: 
+- Links:
 
 [2025-11-17] Notices digest as on-demand progress email
+
 - Files: `accounts/views.py`, `jobs/tasks.py`, `config/settings.py`
 - Behavior impact: The “Send progress update now” action on the Preferences page now uses the notices digest campaign/template by default (key `notices_digest`, templates `emails/notices_digest.{html,txt}`), so the on-demand email matches the scheduled notices digest: 7-day window, 4 buckets (personal, student, module, general), up to 5 items per bucket, and links back to the portal. Failures in `send_parent_update` are logged to the `jobs.tasks` logger and sent to admins via email.
 - Data model: none (migration: no)
@@ -353,9 +379,10 @@ class EmailEvent(models.Model):
 - Emails/Templates: Reuses `notices_digest` templates for both scheduled and on-demand sends; subject `Your Eduvos notices ({total})`.
 - Security/Privacy: Same as existing digest behavior; announcements are permission-filtered when building buckets, and admin error emails omit sensitive content.
 - Rollout/Flags: Configure `PROGRESS_CAMPAIGN_ID` if overriding the default campaign, ensure `ADMIN_EMAILS` is set so job failures reach admins, and keep at least one RQ worker on the `mail` queue running. No feature flags.
-- Links: 
+- Links:
 
 [2025-11-11] On-demand progress update (preferences action)
+
 - Files: `accounts/urls.py`, `accounts/views.py`, `templates/accounts/preferences.html`
 - Behavior impact: Parents who opted in can click “Send progress update now” on the Preferences page to queue an immediate digest email (same template as weekly schedule). A confirmation note appears after redirect.
 - Data model: none (migration: no)
@@ -363,7 +390,7 @@ class EmailEvent(models.Model):
 - Emails/Templates: Reuses configured Campaign and EmailTemplate (key `progress_update` recommended).
 - Security/Privacy: Requires login and opt-in; CSRF-protected POST action; no secrets in template.
 - Rollout/Flags: Ensure an RQ worker is running for the `mail` queue. Optionally set `PROGRESS_CAMPAIGN_ID` in env; otherwise Campaign resolved by template key/path.
-- Links: 
+- Links:
 
   - Files: `crm/msal_client.py`, `crm/service.py`
   - Behavior impact: If Dataverse/MSAL auth fails (e.g., invalid client secret), login proceeds without crashing; CRM validation is skipped for that request.
@@ -372,7 +399,7 @@ class EmailEvent(models.Model):
 - Emails/Templates: none
 - Security/Privacy: No secrets logged; guidance to rotate/fix client secret in Azure AD.
 - Rollout/Flags: No flags. Deploy and ensure environment secret is valid.
-- Links: 
+- Links:
 
 Flow
 
@@ -391,6 +418,7 @@ Middleware guards high‑risk views: if now - last_validated_at > TTL, re‑vali
 Dynamics client (server‑side only)
 
 # crm/msal_client.py
+
 import msal, requests, time
 from django.conf import settings
 from django.core.cache import cache
@@ -404,7 +432,7 @@ def get_app_token():
     app = msal.ConfidentialClientApplication(
         client_id=settings.DYNAMICS_CLIENT_ID,
         client_credential=settings.DYNAMICS_CLIENT_SECRET,
-        authority=f"https://login.microsoftonline.com/{settings.DYNAMICS_TENANT_ID}",
+        authority=f"<https://login.microsoftonline.com/{settings.DYNAMICS_TENANT_ID}>",
     )
     result = app.acquire_token_for_client(scopes=[settings.DYNAMICS_SCOPE])
     token = result["access_token"]
@@ -425,6 +453,7 @@ def dyn_get(path, params=None):
     return r.json()
 
 # crm/service.py
+
 from accounts.models import User
 from students.models import Student, ParentStudentLink
 from django.utils import timezone
@@ -467,7 +496,6 @@ def validate_parent(user: User) -> bool:
     user.save(update_fields=["external_parent_id", "last_validated_at"])
     return bool(active_students)
 
-
 Where to call validation
 
 On login success (allauth signal): user_logged_in → validate_parent(user)
@@ -509,6 +537,7 @@ Keep HTML and plain text versions.
 Context building should aggregate all of a parent’s active students for that send.
 
 # mailer/rendering.py
+
 from django.template.loader import render_to_string
 
 def render_email(template, context):
@@ -528,6 +557,7 @@ Batch job builds context and enqueues send jobs per recipient, or uses ESP bulk 
 Respect ESP rate limits; configure queue concurrency for throughput (e.g., 5–20 workers on mail queue).
 
 # jobs/tasks.py
+
 import django_rq
 from django_rq import job
 from django.db.models import Q
@@ -564,15 +594,16 @@ def send_parent_update(campaign_id: int, user_id: int):
     context = {"parent": user, "students": list(students)}
     send_email_to_parent(campaign_id, user, context)
 
-
 Scheduling (cron‑like)
 
-Use rq-scheduler or django-rq’s scheduler integration to register repeating jobs per Campaign.schedule_cron (e.g., “0 8 * * MON”).
+Use rq-scheduler or django-rq’s scheduler integration to register repeating jobs per Campaign.schedule_cron (e.g., “0 8 ** MON”).
 
 Keep a small management command that (re)applies schedules from DB to the scheduler on deploy.
 
 10) Sending + unsubscribe + idempotency
+
 # mailer/sending.py
+
 from anymail.message import AnymailMessage
 from django.urls import reverse
 from django.core.signing import TimestampSigner, BadSignature
@@ -597,7 +628,6 @@ def send_email_to_parent(campaign_id, user, context):
     msg.tags = [campaign.name]
     msg.send()
 
-
 Unsubscribe view
 
 Parse and verify the signed token, set marketing_opt_in=False, store timestamp/source.
@@ -609,6 +639,7 @@ Use Anymail’s tracking signals to get provider‑agnostic events.
 On bounce/complaint → mark the user as needs_attention or auto‑disable opt‑in until details are corrected.
 
 # mailer/signals.py
+
 from anymail.signals import tracking
 from django.dispatch import receiver
 from mailer.models import EmailEvent
@@ -632,7 +663,6 @@ def handle_tracking(sender, event, esp_name, **kwargs):
                 ep = user.email_pref
                 ep.marketing_opt_in = False
                 ep.save(update_fields=["marketing_opt_in"])
-
 
 urls for webhooks (Anymail provides provider‑specific webhook views you can include; alternatively expose a DRF endpoint and pass events through to the signal handler).
 
@@ -669,7 +699,6 @@ def parent_can_view_student(user, student_id) -> bool:
         if not validate_parent(user):
             return False
     return ParentStudentLink.objects.filter(user=user, student_id=student_id, active=True).exists()
-
 
 Use this guard (or a decorator) anywhere student data is served.
 
@@ -995,17 +1024,19 @@ compliance/
   - Weekly/daily digest includes the same 4 buckets; subject e.g. “Your weekly Eduvos notices”.
   - Each bucket included only if it has items (limit N, e.g., 5 per bucket; link to Announcements page for more).
   - Template styling similar to site; unsubscribe link included.  
-   - Security/Privacy
-    - Detail view permission checks per audience; read receipts created only for authorized users.
-    - Rollout/Flags
-    - Migrate DB, register EmailTemplate + Campaign, author sample announcements in admin.
+  - Security/Privacy
+  - Detail view permission checks per audience; read receipts created only for authorized users.
+  - Rollout/Flags
+  - Migrate DB, register EmailTemplate + Campaign, author sample announcements in admin.
 
 Admin/ops
-  - Admin can author announcements with audience and selectors.
-  - List filters by severity, category, audience; search by title/body.
-  - Metrics: sent/read counts via ReadReceipt.
+
+- Admin can author announcements with audience and selectors.
+- List filters by severity, category, audience; search by title/body.
+- Metrics: sent/read counts via ReadReceipt.
 
 ---
+
 # Changelog
 
 - [2025-10-28] Confirmation links use application URL (SITE_URL)
@@ -1026,25 +1057,25 @@ Admin/ops
   - Links
     - N/A
 
- - [2025-11-11] Fabric: Default to PP.contact and fixed sponsor fields in code
-   - Files changed
-     - `students/fabric.py`, `students/management/commands/diagnose_fabric_linking.py`
-   - Behavior impact
-     - Default candidate table list now only includes `PP.contact` (no implicit `contact_v2` fallback).
-     - Sponsor-email columns default to `btfh_sponsor1email` and `btfh_sponsor2email` without requiring environment variables.
-     - Diagnostics command lints cleaned by removing unused imports.
-   - Data model
-     - No changes. (migration: no)
-   - Integrations/Jobs
-     - None.
-   - Emails/Templates
-     - None.
-   - Security/Privacy
-     - No change.
-   - Rollout/Flags
-     - No flags. No env vars required for table/columns; restart server after deploy.
-   - Links
-     - N/A
+- [2025-11-11] Fabric: Default to PP.contact and fixed sponsor fields in code
+  - Files changed
+    - `students/fabric.py`, `students/management/commands/diagnose_fabric_linking.py`
+  - Behavior impact
+    - Default candidate table list now only includes `PP.contact` (no implicit `contact_v2` fallback).
+    - Sponsor-email columns default to `btfh_sponsor1email` and `btfh_sponsor2email` without requiring environment variables.
+    - Diagnostics command lints cleaned by removing unused imports.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - None.
+  - Emails/Templates
+    - None.
+  - Security/Privacy
+    - No change.
+  - Rollout/Flags
+    - No flags. No env vars required for table/columns; restart server after deploy.
+  - Links
+    - N/A
 
 - [2025-11-11] Students: Fabric linking diagnostics (logging + CLI)
   - Files changed
@@ -1149,60 +1180,60 @@ Admin/ops
   - Links
     - N/A
 
- - [2025-11-11] Jobs: Fabric test command enhancements (schema/table discovery)
-   - Files changed
-     - `jobs/management/commands/test_fabric.py`
-   - Behavior impact
-     - Adds options `--schema`, `--table`, and `--limit`; when a table is missing, the command now lists available tables and searches for names containing “contact”. Prints connected DB name for clarity. This helps quickly locate the correct Warehouse object (e.g., `PP.contact` or `dbo.contact`).
-   - Data model
-     - No changes. (migration: no)
-   - Integrations/Jobs
-     - Still uses `DATABASES['fabric']` (AAD SP). Includes fallback to token-based ODBC if the `Authentication` attribute is not accepted by the local ODBC driver.
-   - Emails/Templates
-     - No changes.
-   - Security/Privacy
-     - Secrets masked in printed connstrings; no data persisted.
-   - Rollout/Flags
-     - No flags. To use: `python manage.py test_fabric --schema PP --table contact --email 'user@example.com'`.
-   - Links
-     - N/A
+- [2025-11-11] Jobs: Fabric test command enhancements (schema/table discovery)
+  - Files changed
+    - `jobs/management/commands/test_fabric.py`
+  - Behavior impact
+    - Adds options `--schema`, `--table`, and `--limit`; when a table is missing, the command now lists available tables and searches for names containing “contact”. Prints connected DB name for clarity. This helps quickly locate the correct Warehouse object (e.g., `PP.contact` or `dbo.contact`).
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - Still uses `DATABASES['fabric']` (AAD SP). Includes fallback to token-based ODBC if the `Authentication` attribute is not accepted by the local ODBC driver.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - Secrets masked in printed connstrings; no data persisted.
+  - Rollout/Flags
+    - No flags. To use: `python manage.py test_fabric --schema PP --table contact --email 'user@example.com'`.
+  - Links
+    - N/A
 
- - [2025-11-11] Jobs: Fabric connectivity test command
-   - Files changed
-     - `jobs/management/commands/test_fabric.py`
-   - Behavior impact
-     - Adds `python manage.py test_fabric [--email <addr>]` to verify connectivity to Microsoft Fabric via the `fabric` DB alias. Runs a COUNT on `[PP].[contact_v2]` and, if `--email` is provided, selects rows filtered by `btfh_sponsor1email`.
-   - Data model
-     - No changes. (migration: no)
-   - Integrations/Jobs
-     - Uses `DATABASES['fabric']` with AAD Service Principal auth. Read-only verification.
-   - Emails/Templates
-     - No changes.
-   - Security/Privacy
-     - No secrets logged. Prints counts and first row (tuple) only when present. Ensure least-privilege permissions on the service principal.
-   - Rollout/Flags
-     - Pre-reqs: ODBC Driver 18 installed, `mssql-django`/`pyodbc` installed, `.env` has `FABRIC_DB` (and optional `FABRIC_HOST`).
-     - Run: `python manage.py test_fabric --email 'user@example.com'`.
-   - Links
-     - N/A
+- [2025-11-11] Jobs: Fabric connectivity test command
+  - Files changed
+    - `jobs/management/commands/test_fabric.py`
+  - Behavior impact
+    - Adds `python manage.py test_fabric [--email <addr>]` to verify connectivity to Microsoft Fabric via the `fabric` DB alias. Runs a COUNT on `[PP].[contact_v2]` and, if `--email` is provided, selects rows filtered by `btfh_sponsor1email`.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - Uses `DATABASES['fabric']` with AAD Service Principal auth. Read-only verification.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - No secrets logged. Prints counts and first row (tuple) only when present. Ensure least-privilege permissions on the service principal.
+  - Rollout/Flags
+    - Pre-reqs: ODBC Driver 18 installed, `mssql-django`/`pyodbc` installed, `.env` has `FABRIC_DB` (and optional `FABRIC_HOST`).
+    - Run: `python manage.py test_fabric --email 'user@example.com'`.
+  - Links
+    - N/A
 
- - [2025-11-11] Integrations: Microsoft Fabric Warehouse (secondary DB via ODBC)
-   - Files changed
-     - `requirements.txt`, `config/settings.py`
-   - Behavior impact
-     - Adds optional secondary database `fabric` using Microsoft Fabric SQL endpoint over ODBC 18 with Microsoft Entra (AAD) Service Principal. No UI changes; enables read/query from Warehouse when env `FABRIC_DB` is set.
-   - Data model
-     - No changes. (migration: no)
-   - Integrations/Jobs
-     - New DB alias `fabric` configured; no scheduled jobs yet. Connection uses `DYN_CLIENT_ID`/`DYN_CLIENT_SECRET` for SP credentials.
-   - Emails/Templates
-     - No changes.
-   - Security/Privacy
-     - AAD Service Principal auth; secrets remain in env. TLS enforced (`Encrypt=yes`, `TrustServerCertificate=no`). Outbound 1433 required.
-   - Rollout/Flags
-     - Install Microsoft ODBC Driver 18 on all environments. Add `FABRIC_DB=<warehouse_name>` (and optionally `FABRIC_HOST=<endpoint>`). Verify with Django shell `connections['fabric']` SELECT test. No feature flag.
-   - Links
-     - N/A
+- [2025-11-11] Integrations: Microsoft Fabric Warehouse (secondary DB via ODBC)
+  - Files changed
+    - `requirements.txt`, `config/settings.py`
+  - Behavior impact
+    - Adds optional secondary database `fabric` using Microsoft Fabric SQL endpoint over ODBC 18 with Microsoft Entra (AAD) Service Principal. No UI changes; enables read/query from Warehouse when env `FABRIC_DB` is set.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - New DB alias `fabric` configured; no scheduled jobs yet. Connection uses `DYN_CLIENT_ID`/`DYN_CLIENT_SECRET` for SP credentials.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - AAD Service Principal auth; secrets remain in env. TLS enforced (`Encrypt=yes`, `TrustServerCertificate=no`). Outbound 1433 required.
+  - Rollout/Flags
+    - Install Microsoft ODBC Driver 18 on all environments. Add `FABRIC_DB=<warehouse_name>` (and optionally `FABRIC_HOST=<endpoint>`). Verify with Django shell `connections['fabric']` SELECT test. No feature flag.
+  - Links
+    - N/A
 
 - [2025-10-28] Students listing via Dynamics sponsor + MSAL authority fix
   - Files changed
@@ -1597,5 +1628,43 @@ Admin/ops
     - No sensitive data persisted; read-only call. Ensure proper permissions on the Dynamics app registration.
   - Rollout/Flags
     - No flags. To disable, remove the block in `students/views.py` and template.
+  - Links
+    - N/A
+
+- [2025-12-08] Academics: At Risk columns, sorting, and filters
+  - Files changed
+    - `templates/academics/atrisk.html`, `academics/views.py`
+  - Behavior impact
+    - Rearranged "At Risk" table columns to: Year, Block, Week, Module Code, Primary Reason, Secondary Reason, Comments, Completed, Disability.
+    - Added a search/filter bar to filter by Year, Block, or search text (q) across module code, reason, and comments. Dropdowns are dynamically populated from available data.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - No new integrations; purely view/template logic on existing Fabric data.
+  - Emails/Templates
+    - Updated `atrisk.html`.
+  - Security/Privacy
+    - No changes.
+  - Rollout/Flags
+    - Deploy code.
+  - Links
+    - N/A
+
+- [2025-12-08] Security: Reduced login lockout timeout
+  - Files changed
+    - `config/settings.py`
+  - Behavior impact
+    - Reduced `AXES_COOLOFF_TIME` (failed login lockout duration) from 15 minutes to 2 minutes.
+    - Adjusted `ACCOUNT_RATE_LIMITS['login_failed']` to 2 minutes to match.
+  - Data model
+    - No changes. (migration: no)
+  - Integrations/Jobs
+    - No changes.
+  - Emails/Templates
+    - No changes.
+  - Security/Privacy
+    - While the lockout is shorter, the account is still protected against brute force.
+  - Rollout/Flags
+    - Deploy code and restart app. Run `python manage.py axes_reset` if needed to clear old locks.
   - Links
     - N/A

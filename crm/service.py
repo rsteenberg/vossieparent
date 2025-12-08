@@ -133,8 +133,21 @@ def validate_parent(user: User) -> bool:
 
 
 def get_contacts_by_sponsor1_email(email):
-    if not settings.DYNAMICS_ORG_URL or not email:
+    if not email:
         return []
+    
+    # Check local Contact table first
+    try:
+        from crm.models import Contact
+        qs = Contact.objects.filter(sponsor1_email__iexact=email.strip())
+        if qs.exists():
+            return [c.raw_data for c in qs]
+    except Exception:
+        pass
+
+    if not settings.DYNAMICS_ORG_URL:
+        return []
+        
     sponsor_field = getattr(
         settings, "DYNAMICS_SPONSOR1_EMAIL_FIELD", "btfh_sponsor1email"
     )
@@ -172,11 +185,21 @@ def get_contact_by_id(contact_id: str):
     """
     from django.conf import settings
 
-    if not settings.DYNAMICS_ORG_URL:
-        logger.debug("get_contact_by_id skipped: DYNAMICS_ORG_URL not set")
-        return None
     if not contact_id:
         logger.debug("get_contact_by_id skipped: empty contact_id")
+        return None
+
+    # Check local Contact table first
+    try:
+        from crm.models import Contact
+        c = Contact.objects.filter(contact_id=contact_id).first()
+        if c:
+            return c.raw_data
+    except Exception:
+        pass
+
+    if not settings.DYNAMICS_ORG_URL:
+        logger.debug("get_contact_by_id skipped: DYNAMICS_ORG_URL not set")
         return None
     try:
         contact = dyn_get(

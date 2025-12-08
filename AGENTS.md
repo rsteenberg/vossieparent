@@ -1,5 +1,7 @@
 # AGENTS Guide
 
+Always run python manage.py --check to ensure that code is valid before completing a change.
+
 ## Change logging policy (single source of truth)
 
 - All functional/code changes MUST be logged in `spec.md` immediately.
@@ -9,6 +11,7 @@
 ## Required entry format in spec.md
 
 Add a dated entry under the relevant section (e.g. Part II) with:
+
 - Title: short description of the change
 - Date: YYYY-MM-DD
 - Files changed: backticked paths

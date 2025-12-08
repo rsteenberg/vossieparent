@@ -299,9 +299,38 @@ def atrisk(request):
         except Exception:
             rows = []
 
+    distinct_years = sorted({str(r.get("edv_year")) for r in rows if r.get("edv_year")}, reverse=True)
+    distinct_blocks = sorted({str(r.get("edv_block")) for r in rows if r.get("edv_block")})
+
+    req_year = request.GET.get("year")
+    req_block = request.GET.get("block")
+    q = (request.GET.get("q") or "").lower().strip()
+
+    filtered_rows = []
+    for r in rows:
+        # Year filter
+        if req_year and str(r.get("edv_year")) != req_year:
+            continue
+        # Block filter
+        if req_block and str(r.get("edv_block")) != req_block:
+            continue
+        # Search filter
+        if q:
+            searchable = [
+                str(r.get("edv_modulecode") or ""),
+                str(r.get("edv_primaryreason") or ""),
+                str(r.get("edv_secondaryreason") or ""),
+                str(r.get("edv_comments") or ""),
+            ]
+            if not any(q in s.lower() for s in searchable):
+                continue
+        filtered_rows.append(r)
+
     ctx = {
         "active_nav": "academics",
         "student": student,
-        "rows": rows,
+        "rows": filtered_rows,
+        "distinct_years": distinct_years,
+        "distinct_blocks": distinct_blocks,
     }
     return render(request, "academics/atrisk.html", ctx)
