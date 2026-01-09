@@ -1,5 +1,10 @@
 <!doctype html>
-<html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eduvos Weekly Digest</title>
+  </head>
   <body style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111;">
     <div style="background:linear-gradient(90deg,#7a193d,#9c3757);color:#fff;padding:16px 12px;">
       <div style="max-width:600px;margin:0 auto;font-weight:bold;">Eduvos Parent Portal</div>
@@ -98,11 +103,13 @@
       <div style="padding:16px;border-top:1px solid #f0f2f5;">
         <h3 style="margin:0 0 8px 0;font-size:16px;">Announcements</h3>
         {% if notices_counts.total %}
-          {% for bucket, entries in notices.items %}
-          {% if entries %}
+          {% for section in announcement_sections %}
+          {% if section.has_data %}
           <div style="margin-bottom:12px;">
-            <div style="font-weight:bold;text-transform:capitalize;">{{ bucket }} ({{ notices_counts|get_item:bucket }})</div>
-            {% for ann in entries %}
+            <div style="font-weight:bold;text-transform:capitalize;">
+              {{ section.name }} ({{ section.count }})
+            </div>
+            {% for ann in section.items %}
             <div style="padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-top:6px;">
               <div style="font-weight:600;">{{ ann.title }}</div>
               <div style="font-size:12px;color:#6b7280;">{{ ann.published_at }}</div>

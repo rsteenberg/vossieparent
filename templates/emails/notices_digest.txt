@@ -1,35 +1,71 @@
-Your notices
+Eduvos Weekly Digest
+Students: {{ subject_vars.students }} | Notices: {{ subject_vars.total }} | Attendance alerts: {{ subject_vars.attendance_flags }}
 
-{% if notices_counts.total %}
-{% if notices.personal %}
-Personal messages to you ({{ notices_counts.personal }})
-{% for a in notices.personal %}
-- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
+{% if students %}
+{% for student in students %}
+== {{ student.name }} ==
+Transcript:
+{% if student.transcript.has_data %}
+{% for module in student.transcript.modules %}
+- {{ module.module }} ({{ module.code }}): {{ module.result }} / {{ module.percentage|default:"-" }}
 {% endfor %}
-{% endif %}
-
-{% if notices.student %}
-Notices about your student(s) ({{ notices_counts.student }})
-{% for a in notices.student %}
-- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
-{% endfor %}
-{% endif %}
-
-{% if notices.module %}
-Course/module notices ({{ notices_counts.module }})
-{% for a in notices.module %}
-- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
-{% endfor %}
-{% endif %}
-
-{% if notices.general %}
-General notices for parents ({{ notices_counts.general }})
-{% for a in notices.general %}
-- {{ a.title }} ({{ a.published_at }}) {{ site_url }}{% url 'content:announcement_detail' a.id %}
-{% endfor %}
-{% endif %}
 {% else %}
-No new notices.
+- No published grades this week.
+{% endif %}
+
+At-risk:
+{% if student.atrisk.has_data %}
+{% for item in student.atrisk.items %}
+- {{ item.module_code }} — {{ item.primary_reason }}{% if item.secondary_reason %} ({{ item.secondary_reason }}){% endif %}
+{% endfor %}
+{% else %}
+- No at-risk items.
+{% endif %}
+
+Attendance:
+- Sessions: {{ student.attendance.total }} | Alerts: {{ student.attendance.alerts }}
+{% if student.attendance.flagged %}
+{% for flag in student.attendance.flagged %}
+  • {{ flag.date }} — {{ flag.module }} ({{ flag.status }})
+{% endfor %}
+{% else %}
+  • No attendance alerts.
+{% endif %}
+
+Financial:
+{% if student.financial.label %}
+- {{ student.financial.label }}
+{% else %}
+- No financial data available.
+{% endif %}
+
+Documents:
+{% if student.documents.has_data %}
+{% for doc in student.documents.items %}
+- {{ doc.title }}{% if doc.student_specific %} (student){% endif %}
+{% endfor %}
+{% else %}
+- No documents shared this week.
+{% endif %}
+
+{% endfor %}
+{% else %}
+No linked students yet. Link a student in the portal to receive weekly updates.
+{% endif %}
+
+Announcements:
+{% if notices_counts.total %}
+{% for section in announcement_sections %}
+{% if section.has_data %}
+* {{ section.name|title }} ({{ section.count }})
+{% for ann in section.items %}
+  - {{ ann.title }} ({{ ann.published_at }}) {{ site_url }}{% url 'content:announcement_detail' ann.id %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% else %}
+No new announcements this week.
 {% endif %}
 
 To unsubscribe, visit: {{ unsubscribe_url }}
+

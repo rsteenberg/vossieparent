@@ -77,7 +77,10 @@ def _atrisk_summary(external_id: str | None, window_key: str) -> Dict[str, Any]:
     if cached is not None:
         return cached
     try:
-        rows = fetch_atrisk_for_student(external_id, limit=50) or []
+        rows = fetch_atrisk_for_student(
+            external_id,
+            limit=50,
+        ) or []
     except Exception:
         rows = []
     items: List[Dict[str, Any]] = []
@@ -275,6 +278,7 @@ def build_weekly_digest(user) -> Dict[str, Any]:
                 "name": bucket,
                 "count": announcement_counts.get(bucket, 0),
                 "items": entries,
+                "has_data": bool(entries),
             }
         )
 
@@ -297,6 +301,7 @@ def build_weekly_digest(user) -> Dict[str, Any]:
         "students": students,
         "announcements": announcements,
         "announcement_counts": announcement_counts,
+        "announcement_sections": announcement_sections,
         "notices": announcements,
         "notices_counts": announcement_counts,
         "subject_vars": subject_vars,
