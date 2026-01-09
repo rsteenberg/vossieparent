@@ -161,7 +161,7 @@ def send_progress_now(request):
         tmpl, _ = EmailTemplate.objects.get_or_create(
             key="notices_digest",
             defaults={
-                "subject_template": "Your Eduvos notices ({total})",
+                "subject_template": "{subject}",
                 "html_template_path": "emails/notices_digest.html",
                 "text_template_path": "emails/notices_digest.txt",
             },

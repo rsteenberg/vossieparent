@@ -5,6 +5,7 @@ Students: {{ subject_vars.students }} | Notices: {{ subject_vars.total }} | Atte
 {% for student in students %}
 == {{ student.name }} ==
 Transcript:
+- View transcript: {{ site_url }}{% url 'academics:transcript' %}
 {% if student.transcript.has_data %}
 {% for module in student.transcript.modules %}
 - {{ module.module }} ({{ module.code }}): {{ module.result }} / {{ module.percentage|default:"-" }}
@@ -14,6 +15,7 @@ Transcript:
 {% endif %}
 
 At-risk:
+- View at-risk: {{ site_url }}{% url 'academics:atrisk' %}
 {% if student.atrisk.has_data %}
 {% for item in student.atrisk.items %}
 - {{ item.module_code }} — {{ item.primary_reason }}{% if item.secondary_reason %} ({{ item.secondary_reason }}){% endif %}
@@ -23,6 +25,7 @@ At-risk:
 {% endif %}
 
 Attendance:
+- View attendance: {{ site_url }}{% url 'attendance:index' %}
 - Sessions: {{ student.attendance.total }} | Alerts: {{ student.attendance.alerts }}
 {% if student.attendance.flagged %}
 {% for flag in student.attendance.flagged %}
@@ -33,13 +36,11 @@ Attendance:
 {% endif %}
 
 Financial:
-{% if student.financial.label %}
 - {{ student.financial.label }}
-{% else %}
-- No financial data available.
-{% endif %}
+- View Financials: {{ site_url }}{% url 'financials:index' %}
 
 Documents:
+- View documents: {{ site_url }}{% url 'content:documents' %}
 {% if student.documents.has_data %}
 {% for doc in student.documents.items %}
 - {{ doc.title }}{% if doc.student_specific %} (student){% endif %}
@@ -54,6 +55,7 @@ No linked students yet. Link a student in the portal to receive weekly updates.
 {% endif %}
 
 Announcements:
+View all announcements: {{ site_url }}{% url 'content:announcements' %}
 {% if notices_counts.total %}
 {% for section in announcement_sections %}
 {% if section.has_data %}

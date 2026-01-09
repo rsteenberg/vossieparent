@@ -69,7 +69,10 @@ def _transcript_summary(student_id: int, window_key: str) -> Dict[str, Any]:
     return summary
 
 
-def _atrisk_summary(external_id: str | None, window_key: str) -> Dict[str, Any]:
+def _atrisk_summary(
+    external_id: str | None,
+    window_key: str,
+) -> Dict[str, Any]:
     if not external_id or "fabric" not in settings.DATABASES:
         return {"items": [], "has_data": False}
     cache_id = _cache_key("atrisk", external_id, window_key)
@@ -140,9 +143,16 @@ def _attendance_summary(
     return summary
 
 
-def _financial_summary(external_id: str | None, window_key: str) -> Dict[str, Any]:
+def _financial_summary(
+    external_id: str | None,
+    window_key: str,
+) -> Dict[str, Any]:
     if not external_id:
-        return {"status": "unknown", "label": None, "amount": None}
+        return {
+            "status": "unknown",
+            "label": "Balance: unavailable",
+            "amount": None,
+        }
     cache_id = _cache_key("financial", external_id, window_key)
     cached = cache.get(cache_id)
     if cached is not None:
@@ -152,7 +162,8 @@ def _financial_summary(external_id: str | None, window_key: str) -> Dict[str, An
     label = None
     info = get_contact_balance(external_id)
     if info:
-        label = info.get("formatted")
+        formatted = info.get("formatted")
+        label = formatted
         raw_amount = info.get("amount")
         if raw_amount is not None:
             try:
@@ -161,8 +172,20 @@ def _financial_summary(external_id: str | None, window_key: str) -> Dict[str, An
                 amount = None
         if amount is not None:
             status = "due" if amount > 0 else "clear"
+            if formatted:
+                if amount > 0:
+                    label = f"Current Payment Due: {formatted}"
+                elif amount < 0:
+                    label = f"Currently no payment due: {formatted}"
+                else:
+                    label = f"Balance: {formatted}"
         elif label:
             status = "info"
+    if not label:
+        if amount is not None:
+            label = f"Balance: R {amount:,.2f}"
+        else:
+            label = "Balance: unavailable"
     summary = {"status": status, "label": label, "amount": amount}
     cache.set(cache_id, summary, CACHE_TTL_SECONDS)
     return summary
@@ -183,7 +206,9 @@ def _documents_summary(student_id: int, window_key: str) -> Dict[str, Any]:
         {
             "title": doc.title,
             "category": doc.category,
-            "published_at": doc.published_at.isoformat() if doc.published_at else None,
+            "published_at": (
+                doc.published_at.isoformat() if doc.published_at else None
+            ),
             "url": doc.file_url,
             "student_specific": doc.student_id is not None,
         }
@@ -269,7 +294,10 @@ def build_weekly_digest(user) -> Dict[str, Any]:
             }
         )
 
+    primary_student_name = students[0]["name"] if len(students) == 1 else None
+
     announcements, announcement_counts = _announcements_summary(user)
+    total_count = announcement_counts.get("total", 0)
     announcement_sections = []
     for bucket in ["personal", "student", "module", "general"]:
         entries = announcements.get(bucket, [])
@@ -285,13 +313,23 @@ def build_weekly_digest(user) -> Dict[str, Any]:
     subject_vars = {
         "first": getattr(user, "first_name", "") or user.email,
         "students": len(students),
-        "total": announcement_counts.get("total", 0),
+        "total": total_count,
         "personal_count": announcement_counts.get("personal", 0),
         "student_count": announcement_counts.get("student", 0),
         "module_count": announcement_counts.get("module", 0),
         "general_count": announcement_counts.get("general", 0),
         "attendance_flags": attendance_flags,
         "financial_due": financial_due,
+        "student_name": primary_student_name,
+        "subject": (
+            f"Your Eduvos Notices for Student: {primary_student_name}"
+            if primary_student_name
+            else (
+                "Your Eduvos Notices"
+                if total_count == 0
+                else f"Your Eduvos Notices ({total_count})"
+            )
+        ),
     }
 
     digest = {

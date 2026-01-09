@@ -24,6 +24,9 @@
 
         <div style="margin-bottom:12px;">
           <div style="font-weight:bold;margin-bottom:4px;">Transcript highlights</div>
+          <div style="margin:0 0 6px 0;font-size:12px;">
+            <a href="{{ site_url }}{% url 'academics:transcript' %}" style="color:#7a193d;text-decoration:none;">View transcript</a>
+          </div>
           {% if student.transcript.has_data %}
             {% for module in student.transcript.modules %}
             <div style="padding:8px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;">
@@ -40,6 +43,9 @@
 
         <div style="margin-bottom:12px;">
           <div style="font-weight:bold;margin-bottom:4px;">At-risk alerts</div>
+          <div style="margin:0 0 6px 0;font-size:12px;">
+            <a href="{{ site_url }}{% url 'academics:atrisk' %}" style="color:#7a193d;text-decoration:none;">View at-risk</a>
+          </div>
           {% if student.atrisk.has_data %}
             <ul style="padding-left:18px;margin:0;color:#374151;font-size:13px;">
               {% for item in student.atrisk.items %}
@@ -56,6 +62,9 @@
 
         <div style="margin-bottom:12px;">
           <div style="font-weight:bold;margin-bottom:4px;">Attendance</div>
+          <div style="margin:0 0 6px 0;font-size:12px;">
+            <a href="{{ site_url }}{% url 'attendance:index' %}" style="color:#7a193d;text-decoration:none;">View attendance</a>
+          </div>
           <div style="font-size:13px;color:#374151;">
             Total sessions: {{ student.attendance.total }} · Alerts: {{ student.attendance.alerts }}
           </div>
@@ -72,15 +81,17 @@
 
         <div style="margin-bottom:12px;">
           <div style="font-weight:bold;margin-bottom:4px;">Financial status</div>
-          {% if student.financial.label %}
-            <div style="font-size:13px;color:#374151;">{{ student.financial.label }}</div>
-          {% else %}
-            <div style="color:#9ca3af;font-size:13px;">No financial data available.</div>
-          {% endif %}
+          <div style="font-size:13px;color:#374151;">{{ student.financial.label }}</div>
+          <div style="margin-top:6px;">
+            <a href="{{ site_url }}{% url 'financials:index' %}" style="color:#7a193d;text-decoration:none;">View Financials</a>
+          </div>
         </div>
 
         <div>
           <div style="font-weight:bold;margin-bottom:4px;">Documents</div>
+          <div style="margin:0 0 6px 0;font-size:12px;">
+            <a href="{{ site_url }}{% url 'content:documents' %}" style="color:#7a193d;text-decoration:none;">View documents</a>
+          </div>
           {% if student.documents.has_data %}
             <ul style="padding-left:18px;margin:0;color:#374151;font-size:13px;">
               {% for doc in student.documents.items %}
@@ -102,6 +113,9 @@
 
       <div style="padding:16px;border-top:1px solid #f0f2f5;">
         <h3 style="margin:0 0 8px 0;font-size:16px;">Announcements</h3>
+        <div style="margin:0 0 6px 0;font-size:12px;">
+          <a href="{{ site_url }}{% url 'content:announcements' %}" style="color:#7a193d;text-decoration:none;">View all announcements</a>
+        </div>
         {% if notices_counts.total %}
           {% for section in announcement_sections %}
           {% if section.has_data %}

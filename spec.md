@@ -381,6 +381,17 @@ class EmailEvent(models.Model):
 - Rollout/Flags: Ensure the three systemd unit files exist and are enabled on production hosts so deploys succeed; override `RQ_WORKER_SERVICES` if unit names differ.
 - Links:
 
+[2026-01-09] Digest: Always show finance balance + link to Financials
+
+- Files: `jobs/digest.py`, `templates/emails/notices_digest.html`, `templates/emails/notices_digest.txt`
+- Behavior impact: Weekly/on-demand digest emails always include a financial balance line per student (with a safe fallback when balance is unavailable). Each digest section also includes a relevant deep link back to the corresponding portal page (academics transcript/at-risk, attendance, financials, documents, announcements). The subject line is now student-aware: when exactly one student is linked it includes the student name.
+- Data model: none (migration: no)
+- Integrations/Jobs: No new jobs; finance balance is still fetched via existing CRM/Fabric helpers.
+- Emails/Templates: Updated digest templates to show the balance line and add portal deep links per section.
+- Security/Privacy: No additional data exposure; link points to existing authenticated Financials page.
+- Rollout/Flags: None.
+- Links:
+
 [2025-11-17] Notices digest as on-demand progress email
 
 - Files: `accounts/views.py`, `jobs/tasks.py`, `config/settings.py`
