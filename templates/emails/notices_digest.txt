@@ -18,7 +18,7 @@ At-risk:
 - View at-risk: {{ site_url }}{% url 'academics:atrisk' %}
 {% if student.atrisk.has_data %}
 {% for item in student.atrisk.items %}
-- {{ item.module_code }} — {{ item.primary_reason }}{% if item.secondary_reason %} ({{ item.secondary_reason }}){% endif %}
+- {% if item.date %}{{ item.date }} — {% endif %}{{ item.module_code }} — {{ item.primary_reason }}{% if item.secondary_reason %} ({{ item.secondary_reason }}){% endif %}
 {% endfor %}
 {% else %}
 - No at-risk items.

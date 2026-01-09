@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 
 from academics.models import GradeItem
 from attendance.models import AttendanceRecord
@@ -69,6 +70,29 @@ def _transcript_summary(student_id: int, window_key: str) -> Dict[str, Any]:
     return summary
 
 
+def _format_row_date(value: Any) -> str:
+    if value is None:
+        return ""
+    if hasattr(value, "date"):
+        try:
+            dt = value
+            if timezone.is_aware(dt):
+                dt = timezone.localtime(dt)
+            return dt.date().isoformat()
+        except Exception:
+            return ""
+    if isinstance(value, str):
+        dt = parse_datetime(value)
+        if dt is not None:
+            if timezone.is_aware(dt):
+                dt = timezone.localtime(dt)
+            return dt.date().isoformat()
+        d = parse_date(value)
+        if d is not None:
+            return d.isoformat()
+    return ""
+
+
 def _atrisk_summary(
     external_id: str | None,
     window_key: str,
@@ -88,14 +112,22 @@ def _atrisk_summary(
         rows = []
     items: List[Dict[str, Any]] = []
     for row in rows[:MAX_ITEMS]:
+        created_on = _format_row_date(row.get("createdon"))
+        year = row.get("edv_year")
+        week = row.get("edv_week")
+        fallback_label = ""
+        if year and week:
+            fallback_label = f"Y{year} W{week}"
         items.append(
             {
+                "date": created_on or fallback_label,
                 "module_code": row.get("edv_modulecode"),
                 "primary_reason": row.get("edv_primaryreason"),
                 "secondary_reason": row.get("edv_secondaryreason"),
                 "comments": row.get("edv_comments"),
                 "block": row.get("edv_block"),
-                "year": row.get("edv_year"),
+                "year": year,
+                "week": week,
             }
         )
     summary = {"items": items, "has_data": bool(items)}

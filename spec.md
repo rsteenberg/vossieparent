@@ -384,7 +384,7 @@ class EmailEvent(models.Model):
 [2026-01-09] Digest: Always show finance balance + link to Financials
 
 - Files: `jobs/digest.py`, `templates/emails/notices_digest.html`, `templates/emails/notices_digest.txt`
-- Behavior impact: Weekly/on-demand digest emails always include a financial balance line per student (with a safe fallback when balance is unavailable). Each digest section also includes a relevant deep link back to the corresponding portal page (academics transcript/at-risk, attendance, financials, documents, announcements). The subject line is now student-aware: when exactly one student is linked it includes the student name.
+- Behavior impact: Weekly/on-demand digest emails always include a financial balance line per student (with a safe fallback when balance is unavailable). Each digest section also includes a relevant deep link back to the corresponding portal page (academics transcript/at-risk, attendance, financials, documents, announcements). The subject line is now student-aware: when exactly one student is linked it includes the student name. At-risk alerts now include a date (derived from Fabric `createdon` with a week/year fallback).
 - Data model: none (migration: no)
 - Integrations/Jobs: No new jobs; finance balance is still fetched via existing CRM/Fabric helpers.
 - Emails/Templates: Updated digest templates to show the balance line and add portal deep links per section.

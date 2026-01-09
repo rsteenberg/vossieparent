@@ -50,7 +50,7 @@
             <ul style="padding-left:18px;margin:0;color:#374151;font-size:13px;">
               {% for item in student.atrisk.items %}
               <li>
-                {{ item.module_code }} — {{ item.primary_reason }}
+                {% if item.date %}{{ item.date }} — {% endif %}{{ item.module_code }} — {{ item.primary_reason }}
                 {% if item.secondary_reason %} ({{ item.secondary_reason }}){% endif %}
               </li>
               {% endfor %}
