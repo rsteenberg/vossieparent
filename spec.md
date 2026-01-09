@@ -370,6 +370,17 @@ class EmailEvent(models.Model):
 - Rollout/Flags: Create and enable systemd unit(s) for RQ workers, then set `RQ_WORKER_SERVICES` in the deploy environment. No feature flags.
 - Links:
 
+[2026-01-09] Default RQ worker services wired into deploy script
+
+- Files: `deploy.sh`
+- Behavior impact: Deploy script now defaults `RQ_WORKER_SERVICES` to `vossie-rq-default.service vossie-rq-mail.service vossie-rqscheduler.service` and prints the configured list in the environment summary, ensuring RQ workers and scheduler restart automatically with each deploy.
+- Data model: none (migration: no)
+- Integrations/Jobs: Keeps mail/default queues plus scheduler in sync with code without requiring manual environment overrides.
+- Emails/Templates: none
+- Security/Privacy: Systemd units still run under `www-data`; no new exposure.
+- Rollout/Flags: Ensure the three systemd unit files exist and are enabled on production hosts so deploys succeed; override `RQ_WORKER_SERVICES` if unit names differ.
+- Links:
+
 [2025-11-17] Notices digest as on-demand progress email
 
 - Files: `accounts/views.py`, `jobs/tasks.py`, `config/settings.py`

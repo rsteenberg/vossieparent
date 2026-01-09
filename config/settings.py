@@ -263,7 +263,7 @@ if SENDGRID_API_KEY:
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.environ.get(
-    "DEFAULT_FROM_EMAIL", "Riaan Steenberg <riaan.steenberg@eduvos.com>"
+    "DEFAULT_FROM_EMAIL", "Sponsor <sponsor@eduvos.com>"
 )
 SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 _admin_emails = os.environ.get("ADMIN_EMAILS", "")

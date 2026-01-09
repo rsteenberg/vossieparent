@@ -18,7 +18,8 @@ NGINX_RELOAD="${NGINX_RELOAD:-1}"
 NGINX_SERVICE="${NGINX_SERVICE:-nginx}"
 # Prefer graceful app reload over hard restart (0=restart, 1=reload)
 APP_RELOAD="${APP_RELOAD:-1}"
-RQ_WORKER_SERVICES="${RQ_WORKER_SERVICES:-}"
+# Space-delimited list of systemd units for rq workers/scheduler
+RQ_WORKER_SERVICES="${RQ_WORKER_SERVICES:-vossie-rq-default.service vossie-rq-mail.service vossie-rqscheduler.service}"
 # ========== END CONFIG ==========
 
 PY="$VENV_DIR/bin/python"
@@ -155,6 +156,11 @@ main() {
   echo "  STATIC_ROOT: $STATIC_ROOT"
   echo "  SITE_URL:    $SITE_URL"
   echo "  APP_PORT:    $APP_PORT"
+  if [ -n "$RQ_WORKER_SERVICES" ]; then
+    echo "  RQ_WORKERS:  $RQ_WORKER_SERVICES"
+  else
+    echo "  RQ_WORKERS:  (none configured)"
+  fi
 
   log "Permission report (no changes yet)"
   perm_report "$PROJECT_DIR"
